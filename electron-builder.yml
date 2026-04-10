@@ -7,8 +7,13 @@ files:
   - '!src/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  # Root `.env` stays excluded from asar; `scripts/stage-env.cjs` copies it into
+  # `build/staged-env/` and `extraResources` below ships it as `resources/.env`.
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+extraResources:
+  - from: build/staged-env
+    to: .
 asarUnpack:
   - resources/**
 win:

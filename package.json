@@ -1,5 +1,5 @@
 {
-  "name": "electron-app",
+  "name": "cgx-debug-tablet-app",
   "version": "1.0.0",
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
@@ -15,10 +15,11 @@
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
-    "build:mac": "npm run build && electron-builder --mac",
-    "build:linux": "npm run build && electron-builder --linux",
+    "stage-env": "node scripts/stage-env.cjs",
+    "build:unpack": "npm run build && npm run stage-env && electron-builder --dir",
+    "build:win": "npm run build && npm run stage-env && electron-builder --win",
+    "build:mac": "npm run build && npm run stage-env && electron-builder --mac",
+    "build:linux": "npm run build && npm run stage-env && electron-builder --linux",
     "ui:add": "npx shadcn@latest add --yes --overwrite --cwd src/renderer/src"
   },
   "dependencies": {

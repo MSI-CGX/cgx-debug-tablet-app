@@ -41,7 +41,36 @@ import {
 } from './workspacePaths'
 import { normalizeExcludedPathList } from '../common/configExcludedPaths'
 
-dotenv.config({ path: path.join(process.cwd(), '.env') })
+/**
+ * Load `.env` from several locations so STORE_KEY works after `electron-builder`
+ * packaging (project `.env` is not shipped; cwd is often not the app folder).
+ * Packaged: try next to the executable, then `resources/`, then cwd and dev paths.
+ */
+function loadEnvFiles(): void {
+  const paths: string[] = []
+  try {
+    if (app.isPackaged) {
+      paths.push(path.join(path.dirname(process.execPath), '.env'))
+      if (process.resourcesPath) {
+        paths.push(path.join(process.resourcesPath, '.env'))
+      }
+    }
+  } catch {
+    /* app may not be fully initialised in edge cases */
+  }
+  paths.push(path.join(process.cwd(), '.env'))
+  paths.push(path.resolve(__dirname, '../../.env'))
+
+  const seen = new Set<string>()
+  for (const p of paths) {
+    const norm = path.normalize(path.resolve(p))
+    if (seen.has(norm)) continue
+    seen.add(norm)
+    dotenv.config({ path: norm, override: false })
+  }
+}
+
+loadEnvFiles()
 
 runStoreMigrations(appStore)
 
