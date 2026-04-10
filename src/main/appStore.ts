@@ -1,10 +1,9 @@
 import Store from 'electron-store'
-import {
-  DEFAULT_LOG_COLOR_RULES,
-  type LogColorRule
-} from '../shared/logRules'
 
 export type AppLocale = 'en' | 'fr'
+
+/** How to interpret file bytes when previewing (electron-store/conf encryption). */
+export type FileReadMode = 'plain' | 'electron-store-encrypted'
 
 export interface AppStoreSchema {
   /** Folder base names hidden in the sidebar (any depth). */
@@ -13,8 +12,11 @@ export interface AppStoreSchema {
   lmdbPath: string
   /** UI language for renderer and native menus that read from store. */
   locale: AppLocale
-  /** Regex-based line colors for log file preview (order matters: first match wins). */
-  logColorRules: LogColorRule[]
+  /**
+   * Per-file read mode: key = `${resolvedRoot}|${relativePath with /}`.
+   * Absent keys default to plain text.
+   */
+  fileDbBindings: Record<string, FileReadMode>
 }
 
 export const appStore = new Store<AppStoreSchema>({
@@ -23,7 +25,7 @@ export const appStore = new Store<AppStoreSchema>({
     ignoredFolderNames: [],
     lmdbPath: '',
     locale: 'en',
-    logColorRules: DEFAULT_LOG_COLOR_RULES
+    fileDbBindings: {}
   }
 })
 

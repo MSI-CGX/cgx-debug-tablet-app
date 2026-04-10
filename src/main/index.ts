@@ -7,59 +7,60 @@ import {
   Menu
 } from 'electron'
 import { readFile, readdir, stat } from 'fs/promises'
-import { randomUUID } from 'crypto'
 import path from 'path'
+import dotenv from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { appStore, getIgnoredFolderNameSet, type AppLocale } from './appStore'
-import { sampleLmdbKeys } from './lmdbPreview'
 import {
-  DEFAULT_LOG_COLOR_RULES,
-  type LogColorRule
-} from '../shared/logRules'
+  appStore,
+  getIgnoredFolderNameSet,
+  type AppLocale,
+  type FileReadMode
+} from './appStore'
+import { sampleLmdbKeys } from './lmdbPreview'
+import { decryptConfEncryptedBuffer } from './decryptConfFile'
+import { fileBindingKey, getFileReadMode } from './fileBindings'
+
+dotenv.config({ path: path.join(process.cwd(), '.env') })
 
 const MAX_READ_BYTES = 5 * 1024 * 1024
 
 const MAIN_I18N: Record<
   AppLocale,
-  { ignoreFolder: string; fileTooLarge: (maxBytes: number) => string }
+  {
+    ignoreFolder: string
+    fileTooLarge: (maxBytes: number) => string
+    fileReadAsPlain: string
+    fileReadAsEncrypted: string
+    fileDecryptNoKey: string
+  }
 > = {
   en: {
     ignoreFolder: 'Ignore folder',
     fileTooLarge: (maxBytes: number) =>
-      `File is larger than ${maxBytes} bytes`
+      `File is larger than ${maxBytes} bytes`,
+    fileReadAsPlain: 'Read as plain text',
+    fileReadAsEncrypted: 'Read as encrypted (electron-store)',
+    fileDecryptNoKey: 'STORE_KEY is not set — cannot decrypt this file'
   },
   fr: {
     ignoreFolder: 'Ignorer le dossier',
     fileTooLarge: (maxBytes: number) =>
-      `Le fichier dépasse ${maxBytes} octets`
+      `Le fichier dépasse ${maxBytes} octets`,
+    fileReadAsPlain: 'Lire en texte brut',
+    fileReadAsEncrypted: 'Lire comme chiffré (electron-store)',
+    fileDecryptNoKey:
+      'STORE_KEY n’est pas défini — impossible de déchiffrer ce fichier'
   }
+}
+
+function getStoreKeyFromEnv(): string | undefined {
+  const k = process.env['STORE_KEY']?.trim()
+  return k || undefined
 }
 
 function getAppLocale(): AppLocale {
   const raw = appStore.get('locale', 'en')
   return raw === 'fr' ? 'fr' : 'en'
-}
-
-function sanitizeLogColorRules(input: unknown): LogColorRule[] {
-  if (!Array.isArray(input)) {
-    return [...DEFAULT_LOG_COLOR_RULES]
-  }
-  const out: LogColorRule[] = []
-  for (const raw of input) {
-    if (!raw || typeof raw !== 'object') continue
-    const r = raw as Record<string, unknown>
-    const id =
-      typeof r.id === 'string' && r.id.trim()
-        ? r.id.trim()
-        : randomUUID()
-    const label = typeof r.label === 'string' ? r.label : ''
-    const pattern = typeof r.pattern === 'string' ? r.pattern : ''
-    const color =
-      typeof r.color === 'string' && r.color.trim() ? r.color.trim() : '#e8eaed'
-    if (!pattern.trim()) continue
-    out.push({ id, label, pattern, color })
-  }
-  return out.length > 0 ? out : [...DEFAULT_LOG_COLOR_RULES]
 }
 
 function assertPathInsideRoot(root: string, relativePath: string): string {
@@ -78,6 +79,30 @@ function notifyConfigChanged(): void {
       win.webContents.send('config:ignoredFoldersChanged')
     }
   }
+}
+
+function notifyFileBindingsChanged(): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('config:fileBindingsChanged')
+    }
+  }
+}
+
+function applyFileReadMode(
+  rootFolderPath: string,
+  relativePath: string,
+  mode: FileReadMode | 'plain' | 'default'
+): void {
+  const key = fileBindingKey(rootFolderPath, relativePath)
+  const current = { ...appStore.get('fileDbBindings', {}) }
+  if (mode === 'default' || mode === 'plain') {
+    delete current[key]
+  } else if (mode === 'electron-store-encrypted') {
+    current[key] = 'electron-store-encrypted'
+  }
+  appStore.set('fileDbBindings', current)
+  notifyFileBindingsChanged()
 }
 
 function notifyLocaleChanged(locale: AppLocale): void {
@@ -147,6 +172,7 @@ app.whenReady().then(() => {
         relativePath: string
         kind: 'file' | 'directory'
         size?: number
+        readMode?: FileReadMode
       }[] = []
 
       for (const entry of entries) {
@@ -161,7 +187,19 @@ app.whenReady().then(() => {
         } else if (entry.isFile()) {
           const full = path.join(base, entry.name)
           const st = await stat(full)
-          out.push({ name: entry.name, relativePath, kind: 'file', size: st.size })
+          const bindings = appStore.get('fileDbBindings', {})
+          const readMode = getFileReadMode(
+            bindings,
+            rootFolderPath,
+            relativePath
+          )
+          out.push({
+            name: entry.name,
+            relativePath,
+            kind: 'file',
+            size: st.size,
+            readMode
+          })
         }
       }
 
@@ -184,7 +222,33 @@ app.whenReady().then(() => {
         const locale = getAppLocale()
         throw new Error(MAIN_I18N[locale].fileTooLarge(MAX_READ_BYTES))
       }
+      const locale = getAppLocale()
+      const bindings = appStore.get('fileDbBindings', {})
+      const mode = getFileReadMode(bindings, folderPath, relativePath)
+      if (mode === 'electron-store-encrypted') {
+        const storeKey = getStoreKeyFromEnv()
+        if (!storeKey) {
+          throw new Error(MAIN_I18N[locale].fileDecryptNoKey)
+        }
+        const buf = await readFile(safeFull)
+        return decryptConfEncryptedBuffer(buf, storeKey)
+      }
       return readFile(safeFull, 'utf-8')
+    }
+  )
+
+  ipcMain.handle(
+    'file:setReadMode',
+    (
+      _,
+      rootFolderPath: string,
+      relativePath: string,
+      mode: FileReadMode | 'plain' | 'default'
+    ) => {
+      if (typeof rootFolderPath !== 'string' || typeof relativePath !== 'string') {
+        return
+      }
+      applyFileReadMode(rootFolderPath, relativePath, mode)
     }
   )
 
@@ -196,13 +260,8 @@ app.whenReady().then(() => {
       ignoredFolderNames: [...appStore.get('ignoredFolderNames', [])],
       lmdbPath: storedLmdb || envLmdb,
       locale: getAppLocale(),
-      logColorRules: [...appStore.get('logColorRules', DEFAULT_LOG_COLOR_RULES)]
+      hasStoreKey: Boolean(getStoreKeyFromEnv())
     }
-  })
-
-  ipcMain.handle('config:setLogColorRules', (_, raw: unknown) => {
-    const next = sanitizeLogColorRules(raw)
-    appStore.set('logColorRules', next)
   })
 
   ipcMain.handle('config:setLocale', (_, next: string) => {
@@ -236,6 +295,58 @@ app.whenReady().then(() => {
         : fromStore || fromEnv
     return sampleLmdbKeys(dbPath)
   })
+
+  ipcMain.on(
+    'file:contextMenu',
+    (
+      event,
+      payload: {
+        rootPath: string
+        relativePath: string
+        x: number
+        y: number
+      }
+    ) => {
+      if (
+        !payload ||
+        typeof payload.rootPath !== 'string' ||
+        typeof payload.relativePath !== 'string'
+      ) {
+        return
+      }
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (!win) return
+
+      const locale = getAppLocale()
+      const hasKey = Boolean(getStoreKeyFromEnv())
+      const menu = Menu.buildFromTemplate([
+        {
+          label: MAIN_I18N[locale].fileReadAsPlain,
+          click: (): void => {
+            applyFileReadMode(payload.rootPath, payload.relativePath, 'plain')
+          }
+        },
+        {
+          label: MAIN_I18N[locale].fileReadAsEncrypted,
+          enabled: hasKey,
+          click: (): void => {
+            if (!hasKey) return
+            applyFileReadMode(
+              payload.rootPath,
+              payload.relativePath,
+              'electron-store-encrypted'
+            )
+          }
+        }
+      ])
+
+      menu.popup({
+        window: win,
+        x: Math.round(payload.x),
+        y: Math.round(payload.y)
+      })
+    }
+  )
 
   ipcMain.on(
     'folder:contextMenu',

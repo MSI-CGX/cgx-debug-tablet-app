@@ -14,7 +14,9 @@
     "folderBadge": "Folder",
     "previewTitle": "Content",
     "readingFile": "Reading file…",
-    "previewHint": "Select a file to read its text content, or open a subfolder. Use Settings to restore ignored folders."
+    "previewHint": "Select a file to read its text content, or open a subfolder. Use Settings to restore ignored folders.",
+    "encryptedBadge": "enc",
+    "encryptedBadgeHint": "This file is opened as electron-store encrypted (right-click to change)."
   },
   "settings": {
     "title": "Settings",
@@ -33,16 +35,9 @@
     "lmdbPlaceholder": "C:\\\\path\\\\to\\\\lmdb-dir",
     "savePath": "Save path",
     "loadSampleKeys": "Load sample keys",
-    "logColorsTitle": "Log line colors",
-    "logColorsHint": "Rules apply to .log file preview in order: the first regex that matches a line sets its color. Patterns use JavaScript RegExp syntax (no slashes).",
-    "logColorsAdd": "Add rule",
-    "logColorsSave": "Save log colors",
-    "logColorsReset": "Reset defaults",
-    "logColorsRemove": "Remove",
-    "logColorsLabelPh": "Label (optional)",
-    "logColorsPatternPh": "Regex pattern",
-    "logColorsColor": "Color",
-    "logColorsEmpty": "No rules. Add one or reset to defaults."
+    "storeKeyHint": "Encrypted file preview: set STORE_KEY in the project `.env` (same key as electron-store encryptionKey) so the app can decrypt.",
+    "storeKeyOk": "STORE_KEY: set",
+    "storeKeyMissing": "STORE_KEY: not set"
   },
   "lmdb": {
     "loading": "Loading…",

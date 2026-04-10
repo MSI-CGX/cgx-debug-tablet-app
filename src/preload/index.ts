@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { AppAPI, AppLocale, LogColorRule } from './types'
+import type { AppAPI, AppLocale, FileReadMode } from './types'
 
 const api: AppAPI = {
   openFolder: (): Promise<string | null> => ipcRenderer.invoke('folder:open'),
@@ -8,11 +8,40 @@ const api: AppAPI = {
     ipcRenderer.invoke('folder:listContents', rootPath, relativeDir ?? ''),
   readFileText: (folderPath: string, relativePath: string) =>
     ipcRenderer.invoke('file:readText', folderPath, relativePath),
+  setFileReadMode: (
+    rootPath: string,
+    relativePath: string,
+    mode: FileReadMode | 'default'
+  ): Promise<void> =>
+    ipcRenderer.invoke('file:setReadMode', rootPath, relativePath, mode),
   showFolderContextMenu: (folderName: string, screenX: number, screenY: number): void => {
     ipcRenderer.send('folder:contextMenu', { folderName, x: screenX, y: screenY })
   },
+  showFileContextMenu: (
+    rootPath: string,
+    relativePath: string,
+    screenX: number,
+    screenY: number
+  ): void => {
+    ipcRenderer.send('file:contextMenu', {
+      rootPath,
+      relativePath,
+      x: screenX,
+      y: screenY
+    })
+  },
   subscribeIgnoredFoldersChanged: (handler: () => void): (() => void) => {
     const channel = 'config:ignoredFoldersChanged'
+    const fn = (): void => {
+      handler()
+    }
+    ipcRenderer.on(channel, fn)
+    return (): void => {
+      ipcRenderer.removeListener(channel, fn)
+    }
+  },
+  subscribeFileBindingsChanged: (handler: () => void): (() => void) => {
+    const channel = 'config:fileBindingsChanged'
     const fn = (): void => {
       handler()
     }
@@ -37,9 +66,7 @@ const api: AppAPI = {
     return (): void => {
       ipcRenderer.removeListener(channel, fn)
     }
-  },
-  setLogColorRules: (rules: LogColorRule[]) =>
-    ipcRenderer.invoke('config:setLogColorRules', rules)
+  }
 }
 
 if (process.contextIsolated) {

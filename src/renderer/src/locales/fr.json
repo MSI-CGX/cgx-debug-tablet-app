@@ -14,7 +14,9 @@
     "folderBadge": "Dossier",
     "previewTitle": "Contenu",
     "readingFile": "Lecture du fichier…",
-    "previewHint": "Sélectionnez un fichier pour afficher son texte, ou ouvrez un sous-dossier. Utilisez Paramètres pour réafficher les dossiers ignorés."
+    "previewHint": "Sélectionnez un fichier pour afficher son texte, ou ouvrez un sous-dossier. Utilisez Paramètres pour réafficher les dossiers ignorés.",
+    "encryptedBadge": "chif",
+    "encryptedBadgeHint": "Ce fichier est ouvert comme chiffré electron-store (clic droit pour changer)."
   },
   "settings": {
     "title": "Paramètres",
@@ -33,16 +35,9 @@
     "lmdbPlaceholder": "C:\\\\chemin\\\\vers\\\\lmdb",
     "savePath": "Enregistrer le chemin",
     "loadSampleKeys": "Charger un échantillon de clés",
-    "logColorsTitle": "Couleurs des lignes de log",
-    "logColorsHint": "Les règles s’appliquent à l’aperçu des fichiers .log dans l’ordre : la première expression régulière qui correspond à une ligne définit sa couleur. Syntaxe RegExp JavaScript (sans barres obliques).",
-    "logColorsAdd": "Ajouter une règle",
-    "logColorsSave": "Enregistrer les couleurs",
-    "logColorsReset": "Valeurs par défaut",
-    "logColorsRemove": "Supprimer",
-    "logColorsLabelPh": "Libellé (facultatif)",
-    "logColorsPatternPh": "Motif regex",
-    "logColorsColor": "Couleur",
-    "logColorsEmpty": "Aucune règle. Ajoutez-en une ou réinitialisez les valeurs par défaut."
+    "storeKeyHint": "Aperçu des fichiers chiffrés : définissez STORE_KEY dans le `.env` du projet (même clé que encryptionKey d’electron-store) pour permettre le déchiffrement.",
+    "storeKeyOk": "STORE_KEY : défini",
+    "storeKeyMissing": "STORE_KEY : absent"
   },
   "lmdb": {
     "loading": "Chargement…",

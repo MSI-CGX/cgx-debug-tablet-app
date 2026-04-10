@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
-import type { FolderEntry, LogColorRule } from '../../preload/types'
+import type { FolderEntry } from '../../preload/types'
 import i18n from '@/i18n/config'
 import { Button } from '@/components/ui/button'
-import LogHighlightedPre from '@/components/LogHighlightedPre'
 import SettingsView from './SettingsView'
 
 function formatBytes(n: number): string {
@@ -62,10 +68,6 @@ function buildBreadcrumbItems(
 
 type Page = 'explorer' | 'settings'
 
-function isLogFileName(name: string): boolean {
-  return name.toLowerCase().endsWith('.log')
-}
-
 export default function App(): JSX.Element {
   const { t } = useTranslation()
   const [page, setPage] = useState<Page>('explorer')
@@ -77,7 +79,7 @@ export default function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [listLoading, setListLoading] = useState(false)
   const [readLoading, setReadLoading] = useState(false)
-  const [logColorRules, setLogColorRules] = useState<LogColorRule[]>([])
+  const selectedPathRef = useRef<string | null>(null)
 
   useEffect(() => {
     const setLang = (lng: string): void => {
@@ -105,9 +107,11 @@ export default function App(): JSX.Element {
     try {
       const list = await window.api.listFolderContents(folderRoot, subPath)
       setEntries(list)
+      return list
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setEntries([])
+      return []
     } finally {
       setListLoading(false)
     }
@@ -119,26 +123,51 @@ export default function App(): JSX.Element {
     }
   }, [rootPath, relativeDir, loadContents])
 
-  const reloadAppConfig = useCallback(async () => {
-    const snap = await window.api.getConfigSnapshot()
-    setLogColorRules(snap.logColorRules)
-  }, [])
-
-  useEffect(() => {
-    void reloadAppConfig()
-  }, [reloadAppConfig])
-
-  const handleConfigChanged = useCallback(async () => {
-    await reloadExplorerIfNeeded()
-    await reloadAppConfig()
-  }, [reloadExplorerIfNeeded, reloadAppConfig])
-
   useEffect(() => {
     const unsub = window.api.subscribeIgnoredFoldersChanged(() => {
       void reloadExplorerIfNeeded()
     })
     return unsub
   }, [reloadExplorerIfNeeded])
+
+  const readFileContent = useCallback(async (file: FolderEntry): Promise<void> => {
+    if (!rootPath || file.kind !== 'file') return
+    setError(null)
+    setReadLoading(true)
+    setContent('')
+    try {
+      const text = await window.api.readFileText(rootPath, file.relativePath)
+      setContent(text)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setReadLoading(false)
+    }
+  }, [rootPath])
+
+  useEffect(() => {
+    selectedPathRef.current =
+      selectedFile?.kind === 'file' ? selectedFile.relativePath : null
+  }, [selectedFile])
+
+  useEffect(() => {
+    const unsub = window.api.subscribeFileBindingsChanged(() => {
+      void (async () => {
+        if (!rootPath) return
+        const list = await window.api.listFolderContents(rootPath, relativeDir)
+        setEntries(list)
+        const p = selectedPathRef.current
+        if (p) {
+          const file = list.find((e) => e.kind === 'file' && e.relativePath === p)
+          if (file) {
+            setSelectedFile(file)
+            await readFileContent(file)
+          }
+        }
+      })()
+    })
+    return unsub
+  }, [rootPath, relativeDir, readFileContent])
 
   const handleOpenFolder = async (): Promise<void> => {
     setError(null)
@@ -176,23 +205,20 @@ export default function App(): JSX.Element {
   const handleSelectFile = async (file: FolderEntry): Promise<void> => {
     if (!rootPath || file.kind !== 'file') return
     setSelectedFile(file)
-    setError(null)
-    setReadLoading(true)
-    setContent('')
-    try {
-      const text = await window.api.readFileText(rootPath, file.relativePath)
-      setContent(text)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setReadLoading(false)
-    }
+    await readFileContent(file)
   }
 
   const handleFolderContextMenu = (e: MouseEvent, folderName: string): void => {
     e.preventDefault()
     e.stopPropagation()
     window.api.showFolderContextMenu(folderName, e.screenX, e.screenY)
+  }
+
+  const handleFileContextMenu = (e: MouseEvent, entry: FolderEntry): void => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!rootPath || entry.kind !== 'file') return
+    window.api.showFileContextMenu(rootPath, entry.relativePath, e.screenX, e.screenY)
   }
 
   const currentFullPath =
@@ -231,7 +257,7 @@ export default function App(): JSX.Element {
 
       {page === 'settings' ? (
         <div className="workspace">
-          <SettingsView onConfigChanged={handleConfigChanged} />
+          <SettingsView onConfigChanged={reloadExplorerIfNeeded} />
         </div>
       ) : (
         <div className="workspace">
@@ -311,8 +337,16 @@ export default function App(): JSX.Element {
                           selectedFile?.relativePath === entry.relativePath ? 'file active' : 'file'
                         }
                         onClick={() => handleSelectFile(entry)}
+                        onContextMenu={(e) => handleFileContextMenu(e, entry)}
                       >
-                        <span className="file-name">{entry.name}</span>
+                        <span className="file-name">
+                          {entry.readMode === 'electron-store-encrypted' ? (
+                            <span className="badge encrypted" title={t('app.encryptedBadgeHint')}>
+                              {t('app.encryptedBadge')}
+                            </span>
+                          ) : null}
+                          {entry.name}
+                        </span>
                         <span className="file-size">{formatBytes(entry.size ?? 0)}</span>
                       </button>
                     )}
@@ -325,11 +359,7 @@ export default function App(): JSX.Element {
               <h2>{t('app.previewTitle')}</h2>
               <div className="preview-scroll">
                 {readLoading && <p className="muted">{t('app.readingFile')}</p>}
-                {selectedFile && !readLoading && isLogFileName(selectedFile.name) ? (
-                  <LogHighlightedPre text={content} rules={logColorRules} />
-                ) : selectedFile && !readLoading ? (
-                  <pre className="content">{content}</pre>
-                ) : null}
+                {selectedFile && !readLoading && <pre className="content">{content}</pre>}
                 {!selectedFile && !readLoading && (
                   <p className="muted preview-hint">{t('app.previewHint')}</p>
                 )}
