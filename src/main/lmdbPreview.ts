@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { open } from 'lmdb'
 
 function keyToLabel(key: unknown): string {
   if (typeof key === 'string') return key
@@ -24,7 +25,6 @@ export async function sampleLmdbKeys(
   const absPath = path.resolve(trimmed)
 
   try {
-    const { open } = await import('lmdb')
     const db = open(absPath, {
       readOnly: true
     })

@@ -16,8 +16,10 @@ extraResources:
     to: .
 asarUnpack:
   - resources/**
-  # LMDB ships native .node binaries; they must load from unpacked asar in production.
+  # LMDB: JS in `lmdb`, native prebuilds live in optional `@lmdb/*` packages — both must be outside asar.
   - "**/node_modules/lmdb/**/*"
+  - "**/node_modules/@lmdb/**/*"
+  - "**/*.node"
 # Rebuild native deps (e.g. lmdb) for Electron ABI — required for packaged app runtime.
 npmRebuild: true
 win:
