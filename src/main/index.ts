@@ -7,10 +7,15 @@ import {
   Menu
 } from 'electron'
 import { readFile, readdir, stat } from 'fs/promises'
+import { randomUUID } from 'crypto'
 import path from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { appStore, getIgnoredFolderNameSet, type AppLocale } from './appStore'
 import { sampleLmdbKeys } from './lmdbPreview'
+import {
+  DEFAULT_LOG_COLOR_RULES,
+  type LogColorRule
+} from '../shared/logRules'
 
 const MAX_READ_BYTES = 5 * 1024 * 1024
 
@@ -33,6 +38,28 @@ const MAIN_I18N: Record<
 function getAppLocale(): AppLocale {
   const raw = appStore.get('locale', 'en')
   return raw === 'fr' ? 'fr' : 'en'
+}
+
+function sanitizeLogColorRules(input: unknown): LogColorRule[] {
+  if (!Array.isArray(input)) {
+    return [...DEFAULT_LOG_COLOR_RULES]
+  }
+  const out: LogColorRule[] = []
+  for (const raw of input) {
+    if (!raw || typeof raw !== 'object') continue
+    const r = raw as Record<string, unknown>
+    const id =
+      typeof r.id === 'string' && r.id.trim()
+        ? r.id.trim()
+        : randomUUID()
+    const label = typeof r.label === 'string' ? r.label : ''
+    const pattern = typeof r.pattern === 'string' ? r.pattern : ''
+    const color =
+      typeof r.color === 'string' && r.color.trim() ? r.color.trim() : '#e8eaed'
+    if (!pattern.trim()) continue
+    out.push({ id, label, pattern, color })
+  }
+  return out.length > 0 ? out : [...DEFAULT_LOG_COLOR_RULES]
 }
 
 function assertPathInsideRoot(root: string, relativePath: string): string {
@@ -66,6 +93,8 @@ function createWindow(): void {
     width: 960,
     height: 720,
     show: false,
+    resizable: false,
+    maximizable: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
@@ -74,6 +103,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
+    mainWindow.maximize()
     mainWindow.show()
   })
 
@@ -165,8 +195,14 @@ app.whenReady().then(() => {
       storePath: appStore.path,
       ignoredFolderNames: [...appStore.get('ignoredFolderNames', [])],
       lmdbPath: storedLmdb || envLmdb,
-      locale: getAppLocale()
+      locale: getAppLocale(),
+      logColorRules: [...appStore.get('logColorRules', DEFAULT_LOG_COLOR_RULES)]
     }
+  })
+
+  ipcMain.handle('config:setLogColorRules', (_, raw: unknown) => {
+    const next = sanitizeLogColorRules(raw)
+    appStore.set('logColorRules', next)
   })
 
   ipcMain.handle('config:setLocale', (_, next: string) => {

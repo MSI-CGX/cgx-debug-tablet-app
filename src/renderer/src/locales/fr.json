@@ -32,7 +32,17 @@
     "lmdbHint": "Chemin absolu vers un répertoire de base LMDB. S’il est vide, LMDB_PATH de l’environnement est utilisé pour charger les clés.",
     "lmdbPlaceholder": "C:\\\\chemin\\\\vers\\\\lmdb",
     "savePath": "Enregistrer le chemin",
-    "loadSampleKeys": "Charger un échantillon de clés"
+    "loadSampleKeys": "Charger un échantillon de clés",
+    "logColorsTitle": "Couleurs des lignes de log",
+    "logColorsHint": "Les règles s’appliquent à l’aperçu des fichiers .log dans l’ordre : la première expression régulière qui correspond à une ligne définit sa couleur. Syntaxe RegExp JavaScript (sans barres obliques).",
+    "logColorsAdd": "Ajouter une règle",
+    "logColorsSave": "Enregistrer les couleurs",
+    "logColorsReset": "Valeurs par défaut",
+    "logColorsRemove": "Supprimer",
+    "logColorsLabelPh": "Libellé (facultatif)",
+    "logColorsPatternPh": "Motif regex",
+    "logColorsColor": "Couleur",
+    "logColorsEmpty": "Aucune règle. Ajoutez-en une ou réinitialisez les valeurs par défaut."
   },
   "lmdb": {
     "loading": "Chargement…",

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
-import type { FolderEntry } from '../../preload/types'
+import type { FolderEntry, LogColorRule } from '../../preload/types'
 import i18n from '@/i18n/config'
 import { Button } from '@/components/ui/button'
+import LogHighlightedPre from '@/components/LogHighlightedPre'
 import SettingsView from './SettingsView'
 
 function formatBytes(n: number): string {
@@ -61,6 +62,10 @@ function buildBreadcrumbItems(
 
 type Page = 'explorer' | 'settings'
 
+function isLogFileName(name: string): boolean {
+  return name.toLowerCase().endsWith('.log')
+}
+
 export default function App(): JSX.Element {
   const { t } = useTranslation()
   const [page, setPage] = useState<Page>('explorer')
@@ -72,6 +77,7 @@ export default function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [listLoading, setListLoading] = useState(false)
   const [readLoading, setReadLoading] = useState(false)
+  const [logColorRules, setLogColorRules] = useState<LogColorRule[]>([])
 
   useEffect(() => {
     const setLang = (lng: string): void => {
@@ -112,6 +118,20 @@ export default function App(): JSX.Element {
       await loadContents(rootPath, relativeDir)
     }
   }, [rootPath, relativeDir, loadContents])
+
+  const reloadAppConfig = useCallback(async () => {
+    const snap = await window.api.getConfigSnapshot()
+    setLogColorRules(snap.logColorRules)
+  }, [])
+
+  useEffect(() => {
+    void reloadAppConfig()
+  }, [reloadAppConfig])
+
+  const handleConfigChanged = useCallback(async () => {
+    await reloadExplorerIfNeeded()
+    await reloadAppConfig()
+  }, [reloadExplorerIfNeeded, reloadAppConfig])
 
   useEffect(() => {
     const unsub = window.api.subscribeIgnoredFoldersChanged(() => {
@@ -210,9 +230,11 @@ export default function App(): JSX.Element {
       </header>
 
       {page === 'settings' ? (
-        <SettingsView onConfigChanged={reloadExplorerIfNeeded} />
+        <div className="workspace">
+          <SettingsView onConfigChanged={handleConfigChanged} />
+        </div>
       ) : (
-        <>
+        <div className="workspace">
           {rootPath && (
             <div className="path-row">
               <nav
@@ -301,14 +323,20 @@ export default function App(): JSX.Element {
 
             <main className="preview">
               <h2>{t('app.previewTitle')}</h2>
-              {readLoading && <p className="muted">{t('app.readingFile')}</p>}
-              {selectedFile && !readLoading && <pre className="content">{content}</pre>}
-              {!selectedFile && !readLoading && (
-                <p className="muted">{t('app.previewHint')}</p>
-              )}
+              <div className="preview-scroll">
+                {readLoading && <p className="muted">{t('app.readingFile')}</p>}
+                {selectedFile && !readLoading && isLogFileName(selectedFile.name) ? (
+                  <LogHighlightedPre text={content} rules={logColorRules} />
+                ) : selectedFile && !readLoading ? (
+                  <pre className="content">{content}</pre>
+                ) : null}
+                {!selectedFile && !readLoading && (
+                  <p className="muted preview-hint">{t('app.previewHint')}</p>
+                )}
+              </div>
             </main>
           </div>
-        </>
+        </div>
       )}
     </div>
   )

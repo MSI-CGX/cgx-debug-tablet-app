@@ -11,11 +11,14 @@ export interface FolderEntry {
 
 export type AppLocale = 'en' | 'fr'
 
+export type { LogColorRule } from '../shared/logRules'
+
 export interface ConfigSnapshot {
   storePath: string
   ignoredFolderNames: string[]
   lmdbPath: string
   locale: AppLocale
+  logColorRules: LogColorRule[]
 }
 
 export interface LmdbPreviewResult {
@@ -36,4 +39,5 @@ export interface AppAPI {
   previewLmdb: (overridePath?: string) => Promise<LmdbPreviewResult>
   setLocale: (locale: AppLocale) => Promise<void>
   subscribeLocaleChanged: (handler: (locale: AppLocale) => void) => () => void
+  setLogColorRules: (rules: LogColorRule[]) => Promise<void>
 }

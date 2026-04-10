@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { AppAPI, AppLocale } from './types'
+import type { AppAPI, AppLocale, LogColorRule } from './types'
 
 const api: AppAPI = {
   openFolder: (): Promise<string | null> => ipcRenderer.invoke('folder:open'),
@@ -37,7 +37,9 @@ const api: AppAPI = {
     return (): void => {
       ipcRenderer.removeListener(channel, fn)
     }
-  }
+  },
+  setLogColorRules: (rules: LogColorRule[]) =>
+    ipcRenderer.invoke('config:setLogColorRules', rules)
 }
 
 if (process.contextIsolated) {

@@ -4,7 +4,8 @@
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
     "src/preload/types.ts",
-    "src/preload/index.d.ts"
+    "src/preload/index.d.ts",
+    "src/shared/**/*"
   ],
   "compilerOptions": {
     "composite": true,

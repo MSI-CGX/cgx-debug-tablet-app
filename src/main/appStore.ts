@@ -1,4 +1,8 @@
 import Store from 'electron-store'
+import {
+  DEFAULT_LOG_COLOR_RULES,
+  type LogColorRule
+} from '../shared/logRules'
 
 export type AppLocale = 'en' | 'fr'
 
@@ -9,6 +13,8 @@ export interface AppStoreSchema {
   lmdbPath: string
   /** UI language for renderer and native menus that read from store. */
   locale: AppLocale
+  /** Regex-based line colors for log file preview (order matters: first match wins). */
+  logColorRules: LogColorRule[]
 }
 
 export const appStore = new Store<AppStoreSchema>({
@@ -16,7 +22,8 @@ export const appStore = new Store<AppStoreSchema>({
   defaults: {
     ignoredFolderNames: [],
     lmdbPath: '',
-    locale: 'en'
+    locale: 'en',
+    logColorRules: DEFAULT_LOG_COLOR_RULES
   }
 })
 

@@ -32,7 +32,17 @@
     "lmdbHint": "Absolute path to an LMDB database directory. If empty, LMDB_PATH from the environment is used when loading keys.",
     "lmdbPlaceholder": "C:\\\\path\\\\to\\\\lmdb-dir",
     "savePath": "Save path",
-    "loadSampleKeys": "Load sample keys"
+    "loadSampleKeys": "Load sample keys",
+    "logColorsTitle": "Log line colors",
+    "logColorsHint": "Rules apply to .log file preview in order: the first regex that matches a line sets its color. Patterns use JavaScript RegExp syntax (no slashes).",
+    "logColorsAdd": "Add rule",
+    "logColorsSave": "Save log colors",
+    "logColorsReset": "Reset defaults",
+    "logColorsRemove": "Remove",
+    "logColorsLabelPh": "Label (optional)",
+    "logColorsPatternPh": "Regex pattern",
+    "logColorsColor": "Color",
+    "logColorsEmpty": "No rules. Add one or reset to defaults."
   },
   "lmdb": {
     "loading": "Loading…",
