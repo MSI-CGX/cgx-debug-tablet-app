@@ -14,7 +14,13 @@ import type {
   GeoJsonMapLayerEntry,
   LogHighlightRule
 } from '../../preload/types'
+import JsonConfigTree from '@/components/JsonConfigTree'
 import LogHighlightedPre from '@/components/LogHighlightedPre'
+import {
+  isPathExcludedByRules,
+  normalizeExcludedPathLine,
+  parseDottedPath
+} from '../../common/configExcludedPaths'
 import i18n from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import SettingsView from './SettingsView'
@@ -99,10 +105,22 @@ export default function App(): JSX.Element {
   const [logHighlightForAllText, setLogHighlightForAllText] = useState(false)
   const [favorites, setFavorites] = useState<FavoriteEntry[]>([])
   const [geoJsonMapLayers, setGeoJsonMapLayers] = useState<GeoJsonMapLayerEntry[]>([])
+  const [workspaceConfigFilePath, setWorkspaceConfigFilePath] = useState('')
+  const [configFormExcludedPaths, setConfigFormExcludedPaths] = useState<string[]>(
+    []
+  )
+  const [configJsonPreview, setConfigJsonPreview] = useState<
+    { ok: true; data: unknown } | { ok: false; error: string } | null
+  >(null)
   const [error, setError] = useState<string | null>(null)
   const [listLoading, setListLoading] = useState(false)
   const [readLoading, setReadLoading] = useState(false)
   const selectedPathRef = useRef<string | null>(null)
+  const previewScrollRef = useRef<HTMLDivElement | null>(null)
+
+  const scrollPreviewToTop = useCallback((): void => {
+    previewScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   useEffect(() => {
     const setLang = (lng: string): void => {
@@ -160,6 +178,83 @@ export default function App(): JSX.Element {
     })
     return unsub
   }, [refreshGeoJsonMapLayers])
+
+  const refreshWorkspaceConfigPath = useCallback(async () => {
+    const snap = await window.api.getConfigSnapshot()
+    setWorkspaceConfigFilePath(snap.workspaceConfigFileRelativePath ?? '')
+  }, [])
+
+  useEffect(() => {
+    void refreshWorkspaceConfigPath()
+    const unsub = window.api.subscribeWorkspaceConfigFileChanged(() => {
+      void refreshWorkspaceConfigPath()
+    })
+    return unsub
+  }, [refreshWorkspaceConfigPath])
+
+  const refreshConfigFormExcludedPaths = useCallback(async () => {
+    const snap = await window.api.getConfigSnapshot()
+    setConfigFormExcludedPaths(snap.configFormExcludedPaths ?? [])
+  }, [])
+
+  useEffect(() => {
+    void refreshConfigFormExcludedPaths()
+    const unsub = window.api.subscribeConfigFormExcludedPathsChanged(() => {
+      void refreshConfigFormExcludedPaths()
+    })
+    return unsub
+  }, [refreshConfigFormExcludedPaths])
+
+  const addExcludedPathFromTree = useCallback(
+    async (dottedPath: string): Promise<void> => {
+      const n = normalizeExcludedPathLine(dottedPath)
+      if (!n) return
+      const segs = parseDottedPath(n)
+      if (!segs) return
+      const concrete = segs.filter((s): s is string | number => s !== '*')
+      if (concrete.length !== segs.length) return
+      if (isPathExcludedByRules(concrete, configFormExcludedPaths)) return
+      const next = [...new Set([...configFormExcludedPaths, n])].sort((a, b) =>
+        a.localeCompare(b)
+      )
+      await window.api.setConfigFormExcludedPaths(next)
+    },
+    [configFormExcludedPaths]
+  )
+
+  useEffect(() => {
+    if (!selectedEntry || selectedEntry.kind !== 'file') {
+      setConfigJsonPreview(null)
+      return
+    }
+    if (selectedEntry.readMode === 'image' || selectedEntry.readMode === 'lmdb') {
+      setConfigJsonPreview(null)
+      return
+    }
+    if (!workspaceConfigFilePath) {
+      setConfigJsonPreview(null)
+      return
+    }
+    if (
+      normalizePathForCompare(selectedEntry.relativePath) !==
+      normalizePathForCompare(workspaceConfigFilePath)
+    ) {
+      setConfigJsonPreview(null)
+      return
+    }
+    if (!content) {
+      setConfigJsonPreview(null)
+      return
+    }
+    try {
+      setConfigJsonPreview({ ok: true, data: JSON.parse(content) })
+    } catch (e) {
+      setConfigJsonPreview({
+        ok: false,
+        error: e instanceof Error ? e.message : String(e)
+      })
+    }
+  }, [selectedEntry, content, workspaceConfigFilePath])
 
   const geoJsonPathSet = useMemo(() => {
     const s = new Set<string>()
@@ -388,6 +483,17 @@ export default function App(): JSX.Element {
   const isFileOnGeoMap = (entry: FolderEntry): boolean =>
     entry.kind === 'file' && geoJsonPathSet.has(normalizePathForCompare(entry.relativePath))
 
+  const isWorkspaceConfigFile = (entry: FolderEntry): boolean =>
+    entry.kind === 'file' &&
+    workspaceConfigFilePath !== '' &&
+    normalizePathForCompare(entry.relativePath) ===
+      normalizePathForCompare(workspaceConfigFilePath)
+
+  const showConfigFormPreview =
+    selectedEntry?.kind === 'file' &&
+    selectedEntry.readMode !== 'image' &&
+    configJsonPreview?.ok === true
+
   return (
     <div className="layout">
       <header className="header">
@@ -560,6 +666,11 @@ export default function App(): JSX.Element {
                               {t('app.mapBadge')}
                             </span>
                           ) : null}
+                          {isWorkspaceConfigFile(entry) ? (
+                            <span className="badge config" title={t('app.configFileBadgeHint')}>
+                              {t('app.configFileBadge')}
+                            </span>
+                          ) : null}
                           {entry.name}
                         </span>
                         <span className="file-size">{formatBytes(entry.size ?? 0)}</span>
@@ -573,7 +684,7 @@ export default function App(): JSX.Element {
 
             <main className="preview">
               <h2>{t('app.previewTitle')}</h2>
-              <div className="preview-scroll">
+              <div className="preview-scroll" ref={previewScrollRef}>
                 {readLoading && <p className="muted">{t('app.readingFile')}</p>}
                 {selectedEntry && !readLoading && imagePreviewUrl ? (
                   <img
@@ -582,10 +693,59 @@ export default function App(): JSX.Element {
                     alt={selectedEntry.name}
                   />
                 ) : null}
-                {selectedEntry && !readLoading && !imagePreviewUrl && useLogHighlight ? (
+                {selectedEntry &&
+                !readLoading &&
+                !imagePreviewUrl &&
+                showConfigFormPreview &&
+                configJsonPreview?.ok ? (
+                  <div className="config-json-preview">
+                    <div className="config-json-preview-sticky">
+                      <div className="config-json-preview-sticky-inner">
+                        <p className="config-json-preview-lead muted small">
+                          {t('app.configPreviewLead')}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="config-json-scroll-root"
+                          onClick={scrollPreviewToTop}
+                        >
+                          {t('app.configFormScrollToRoot')}
+                        </Button>
+                      </div>
+                    </div>
+                    <JsonConfigTree
+                      key={workspaceConfigFilePath || 'config-preview'}
+                      data={configJsonPreview.data}
+                      excludedPathRules={configFormExcludedPaths}
+                      onAddExcludedPath={addExcludedPathFromTree}
+                    />
+                  </div>
+                ) : null}
+                {selectedEntry &&
+                !readLoading &&
+                !imagePreviewUrl &&
+                configJsonPreview?.ok === false &&
+                isWorkspaceConfigFile(selectedEntry) ? (
+                  <div className="config-json-error banner error">{configJsonPreview.error}</div>
+                ) : null}
+                {selectedEntry &&
+                !readLoading &&
+                !imagePreviewUrl &&
+                configJsonPreview?.ok === false &&
+                isWorkspaceConfigFile(selectedEntry) ? (
+                  <pre className="content">{content}</pre>
+                ) : null}
+                {selectedEntry && !readLoading && !imagePreviewUrl && useLogHighlight && !showConfigFormPreview ? (
                   <LogHighlightedPre content={content} rules={logHighlightRules} />
                 ) : null}
-                {selectedEntry && !readLoading && !imagePreviewUrl && !useLogHighlight ? (
+                {selectedEntry &&
+                !readLoading &&
+                !imagePreviewUrl &&
+                !useLogHighlight &&
+                !showConfigFormPreview &&
+                !(configJsonPreview?.ok === false && isWorkspaceConfigFile(selectedEntry)) ? (
                   <pre className="content">{content}</pre>
                 ) : null}
                 {!selectedEntry && !readLoading && (

@@ -9,6 +9,7 @@ import type {
 } from '../../preload/types'
 import { Button } from '@/components/ui/button'
 import i18n from '@/i18n/config'
+import { normalizeExcludedPathLine } from '../../common/configExcludedPaths'
 
 type SettingsViewProps = {
   onConfigChanged: () => Promise<void>
@@ -23,6 +24,7 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
   const [logRuleRows, setLogRuleRows] = useState<LogHighlightRule[]>([])
   const [logForAllText, setLogForAllText] = useState(false)
   const [ignoredExtInput, setIgnoredExtInput] = useState('')
+  const [configFormExcludedInput, setConfigFormExcludedInput] = useState('')
   const [geoJsonLayers, setGeoJsonLayers] = useState<GeoJsonMapLayerEntry[]>([])
 
   const load = useCallback(async () => {
@@ -78,6 +80,26 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
     })
     return unsub
   }, [load])
+
+  useEffect(() => {
+    const unsub = window.api.subscribeWorkspaceConfigFileChanged(() => {
+      void load()
+    })
+    return unsub
+  }, [load])
+
+  useEffect(() => {
+    const unsub = window.api.subscribeConfigFormExcludedPathsChanged(() => {
+      void load()
+    })
+    return unsub
+  }, [load])
+
+  const handleClearWorkspaceConfig = async (): Promise<void> => {
+    await window.api.setWorkspaceConfigFile(null)
+    await onConfigChanged()
+    await load()
+  }
 
   const handleRemoveGeoLayer = async (id: string): Promise<void> => {
     await window.api.removeGeoJsonMapLayer(id)
@@ -194,6 +216,36 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
     const ok = window.confirm(t('confirm.clearIgnoredExtensions'))
     if (!ok) return
     await window.api.setIgnoredFileExtensions([])
+    await onConfigChanged()
+    await load()
+  }
+
+  const configFormExcludedPaths = config?.configFormExcludedPaths ?? []
+
+  const handleAddConfigFormExcluded = async (): Promise<void> => {
+    const n = normalizeExcludedPathLine(configFormExcludedInput)
+    if (!n) return
+    const next = [...new Set([...configFormExcludedPaths, n])].sort((a, b) =>
+      a.localeCompare(b)
+    )
+    await window.api.setConfigFormExcludedPaths(next)
+    setConfigFormExcludedInput('')
+    await onConfigChanged()
+    await load()
+  }
+
+  const handleRemoveConfigFormExcluded = async (path: string): Promise<void> => {
+    const next = configFormExcludedPaths.filter((p) => p !== path)
+    await window.api.setConfigFormExcludedPaths(next)
+    await onConfigChanged()
+    await load()
+  }
+
+  const handleClearAllConfigFormExcluded = async (): Promise<void> => {
+    if (configFormExcludedPaths.length === 0) return
+    const ok = window.confirm(t('confirm.clearConfigFormExcluded'))
+    if (!ok) return
+    await window.api.setConfigFormExcludedPaths([])
     await onConfigChanged()
     await load()
   }
@@ -498,6 +550,92 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
         </ul>
         {geoJsonLayers.length === 0 ? (
           <p className="muted">{t('settings.geoMapEmpty')}</p>
+        ) : null}
+      </section>
+
+      <section className="settings-section">
+        <h3>{t('settings.workspaceConfigTitle')}</h3>
+        <p className="muted small">{t('settings.workspaceConfigHint')}</p>
+        {config?.workspaceConfigFileRelativePath ? (
+          <div className="settings-list-item settings-workspace-config-row">
+            <code className="settings-geo-rel" title={config.workspaceConfigFileRelativePath}>
+              {config.workspaceConfigFileRelativePath}
+            </code>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void handleClearWorkspaceConfig()}
+            >
+              {t('settings.workspaceConfigClear')}
+            </Button>
+          </div>
+        ) : (
+          <p className="muted">{t('settings.workspaceConfigEmpty')}</p>
+        )}
+      </section>
+
+      <section className="settings-section">
+        <div className="settings-section-head">
+          <h3>{t('settings.configFormExcludedTitle')}</h3>
+          {configFormExcludedPaths.length > 0 && (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => void handleClearAllConfigFormExcluded()}
+            >
+              {t('settings.clearAllConfigFormExcluded')}
+            </Button>
+          )}
+        </div>
+        <p className="muted small">{t('settings.configFormExcludedHint')}</p>
+        <div className="row settings-ignored-ext-add">
+          <input
+            type="text"
+            className="input settings-config-excluded-input"
+            placeholder={t('settings.configFormExcludedPlaceholder')}
+            value={configFormExcludedInput}
+            onChange={(e) => setConfigFormExcludedInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void handleAddConfigFormExcluded()
+              }
+            }}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            aria-label={t('settings.configFormExcludedPlaceholder')}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void handleAddConfigFormExcluded()}
+          >
+            {t('settings.addConfigFormExcluded')}
+          </Button>
+        </div>
+        <ul className="settings-list">
+          {configFormExcludedPaths.map((p) => (
+            <li key={p} className="settings-list-item">
+              <code className="settings-workspace-code" title={p}>
+                {p}
+              </code>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleRemoveConfigFormExcluded(p)}
+              >
+                {t('settings.removeConfigFormExcluded')}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        {configFormExcludedPaths.length === 0 ? (
+          <p className="muted">{t('settings.configFormExcludedEmpty')}</p>
         ) : null}
       </section>
 

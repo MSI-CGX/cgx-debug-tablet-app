@@ -39,6 +39,7 @@ import {
   resolveUnderWorkspace,
   toWorkspaceRelative
 } from './workspacePaths'
+import { normalizeExcludedPathList } from '../common/configExcludedPaths'
 
 dotenv.config({ path: path.join(process.cwd(), '.env') })
 
@@ -66,6 +67,8 @@ const MAIN_I18N: Record<
     favoriteRemoveFrom: string
     geoMapAddToMap: string
     geoMapRemoveFromMap: string
+    workspaceConfigSet: string
+    workspaceConfigClear: string
   }
 > = {
   en: {
@@ -84,7 +87,9 @@ const MAIN_I18N: Record<
     favoriteAddTo: 'Add to favorites',
     favoriteRemoveFrom: 'Remove from favorites',
     geoMapAddToMap: 'Add to map',
-    geoMapRemoveFromMap: 'Remove from map'
+    geoMapRemoveFromMap: 'Remove from map',
+    workspaceConfigSet: 'Set as workspace config file',
+    workspaceConfigClear: 'Unset workspace config file'
   },
   fr: {
     ignoreFolder: 'Ignorer le dossier',
@@ -105,7 +110,9 @@ const MAIN_I18N: Record<
     favoriteAddTo: 'Ajouter aux favoris',
     favoriteRemoveFrom: 'Retirer des favoris',
     geoMapAddToMap: 'Ajouter à la carte',
-    geoMapRemoveFromMap: 'Retirer de la carte'
+    geoMapRemoveFromMap: 'Retirer de la carte',
+    workspaceConfigSet: 'Définir comme fichier de configuration du workspace',
+    workspaceConfigClear: 'Retirer le fichier de configuration du workspace'
   }
 }
 
@@ -250,6 +257,26 @@ function notifyGeoJsonMapLayersChanged(): void {
       win.webContents.send('config:geoJsonMapLayersChanged')
     }
   }
+}
+
+function notifyWorkspaceConfigFileChanged(): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('config:workspaceConfigFileChanged')
+    }
+  }
+}
+
+function notifyConfigFormExcludedPathsChanged(): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('config:configFormExcludedPathsChanged')
+    }
+  }
+}
+
+function getWorkspaceConfigFileRelativePath(): string {
+  return appStore.get('workspaceConfigFileRelativePath', '').trim()
 }
 
 function getGeoJsonLayers(): GeoJsonMapLayerEntry[] {
@@ -539,8 +566,30 @@ app.whenReady().then(() => {
         return [...DEFAULT_LOG_HIGHLIGHT_RULES]
       })(),
       favorites: getFavoritesList().map((f) => ({ ...f })),
-      geoJsonMapLayers: getGeoJsonLayers().map((l) => ({ ...l }))
+      geoJsonMapLayers: getGeoJsonLayers().map((l) => ({ ...l })),
+      workspaceConfigFileRelativePath: getWorkspaceConfigFileRelativePath(),
+      configFormExcludedPaths: [
+        ...normalizeExcludedPathList(appStore.get('configFormExcludedPaths', []))
+      ]
     }
+  })
+
+  ipcMain.handle('config:setWorkspaceConfigFile', (_, relativePath: unknown) => {
+    if (relativePath === null || relativePath === '') {
+      appStore.set('workspaceConfigFileRelativePath', '')
+      notifyWorkspaceConfigFileChanged()
+      return
+    }
+    if (typeof relativePath !== 'string' || !relativePath.trim()) return
+    appStore.set('workspaceConfigFileRelativePath', normalizeStoredRel(relativePath))
+    notifyWorkspaceConfigFileChanged()
+  })
+
+  ipcMain.handle('config:setConfigFormExcludedPaths', (_, next: unknown) => {
+    if (!Array.isArray(next)) return
+    const normalized = normalizeExcludedPathList(next)
+    appStore.set('configFormExcludedPaths', normalized)
+    notifyConfigFormExcludedPathsChanged()
   })
 
   ipcMain.on('map:openWindow', () => {
@@ -798,6 +847,32 @@ app.whenReady().then(() => {
             { type: 'separator' }
           ]
         : []
+      const storedConfigRel = getWorkspaceConfigFileRelativePath()
+      const isThisWorkspaceConfigFile =
+        rel !== null &&
+        storedConfigRel !== '' &&
+        normalizeStoredRel(rel) === normalizeStoredRel(storedConfigRel)
+      const configBlock: MenuItemConstructorOptions[] = [
+        {
+          label: isThisWorkspaceConfigFile
+            ? MAIN_I18N[locale].workspaceConfigClear
+            : MAIN_I18N[locale].workspaceConfigSet,
+          enabled: rel !== null,
+          click: (): void => {
+            if (rel === null) return
+            if (isThisWorkspaceConfigFile) {
+              appStore.set('workspaceConfigFileRelativePath', '')
+            } else {
+              appStore.set(
+                'workspaceConfigFileRelativePath',
+                normalizeStoredRel(rel)
+              )
+            }
+            notifyWorkspaceConfigFileChanged()
+          }
+        },
+        { type: 'separator' }
+      ]
       const menu = Menu.buildFromTemplate([
         {
           label: isFav
@@ -822,6 +897,7 @@ app.whenReady().then(() => {
         },
         { type: 'separator' },
         ...geoBlock,
+        ...configBlock,
         {
           label: MAIN_I18N[locale].filePreviewAutomatic,
           click: (): void => {

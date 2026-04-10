@@ -73,6 +73,12 @@ export interface ConfigSnapshot {
   logHighlightRules: LogHighlightRule[]
   favorites: FavoriteEntry[]
   geoJsonMapLayers: GeoJsonMapLayerEntry[]
+  /** Single JSON config file path relative to workspace (empty if unset). */
+  workspaceConfigFileRelativePath: string
+  /**
+   * Dotted JSON paths hidden in the workspace config form preview only (e.g. secrets.apiKey).
+   */
+  configFormExcludedPaths: string[]
 }
 
 export interface LmdbPreviewResult {
@@ -137,4 +143,8 @@ export interface AppAPI {
   ) => Promise<{ ok: true; text: string } | { ok: false; error: string }>
   removeGeoJsonMapLayer: (id: string) => Promise<void>
   subscribeGeoJsonMapLayersChanged: (handler: () => void) => () => void
+  setWorkspaceConfigFile: (relativePath: string | null) => Promise<void>
+  subscribeWorkspaceConfigFileChanged: (handler: () => void) => () => void
+  setConfigFormExcludedPaths: (paths: string[]) => Promise<void>
+  subscribeConfigFormExcludedPathsChanged: (handler: () => void) => () => void
 }

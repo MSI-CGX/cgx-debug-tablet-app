@@ -90,6 +90,16 @@ export interface AppStoreSchema {
   favorites: FavoriteEntry[]
   /** GeoJSON layers shown on the map window (paths relative to workspace root). */
   geoJsonMapLayers: GeoJsonMapLayerEntry[]
+  /**
+   * Optional single workspace config file (JSON), path relative to workspace root.
+   * Shown in the preview as a structured form; only one file can be designated.
+   */
+  workspaceConfigFileRelativePath: string
+  /**
+   * Dotted JSON paths (e.g. auth.token, items.0.secret) omitted from the config form preview only.
+   * Does not alter stored file content.
+   */
+  configFormExcludedPaths: string[]
 }
 
 export const appStore = new Store<AppStoreSchema>({
@@ -105,7 +115,9 @@ export const appStore = new Store<AppStoreSchema>({
     logHighlightForAllTextFiles: false,
     logHighlightRules: [...DEFAULT_LOG_HIGHLIGHT_RULES],
     favorites: [],
-    geoJsonMapLayers: []
+    geoJsonMapLayers: [],
+    workspaceConfigFileRelativePath: '',
+    configFormExcludedPaths: []
   }
 })
 

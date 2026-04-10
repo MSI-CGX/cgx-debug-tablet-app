@@ -24,6 +24,16 @@
     "imageBadgeHint": "Aperçu image (Paramètres → extensions de fichiers).",
     "mapBadge": "carte",
     "mapBadgeHint": "Ce fichier GeoJSON est sur la carte (Paramètres → retirer ou clic droit sur le fichier).",
+    "configFileBadge": "cfg",
+    "configFileBadgeHint": "Fichier de configuration du workspace (JSON). L’aperçu s’affiche sous forme structurée.",
+    "configPreviewLead": "Configuration du workspace (JSON en lecture seule) :",
+    "configFormScrollToRoot": "Aller à la racine",
+    "configTreeArray": "Liste",
+    "configTreeObject": "Groupe",
+    "configTreePathsExcluded": "Toutes les entrées de ce niveau sont masquées par les chemins définis dans les paramètres.",
+    "configTreeContextAddExcluded": "Ajouter aux chemins masqués (Paramètres)",
+    "configTreeContextAlreadyExcluded": "Déjà masqué",
+    "configTreeContextCopyPath": "Copier le chemin",
     "favoritesAria": "Raccourcis favoris"
   },
   "settings": {
@@ -51,6 +61,17 @@
     "geoMapEmpty": "Aucune couche GeoJSON sur la carte pour l’instant.",
     "openMapWindow": "Ouvrir la fenêtre carte",
     "removeGeoLayer": "Retirer de la carte",
+    "workspaceConfigTitle": "Fichier de configuration du workspace",
+    "workspaceConfigHint": "Un seul fichier JSON peut être désigné par workspace (Explorateur → clic droit sur un fichier). Il s’ouvre dans l’aperçu en sections et champs imbriqués.",
+    "workspaceConfigEmpty": "Aucun fichier de configuration n’est défini.",
+    "workspaceConfigClear": "Retirer la désignation",
+    "configFormExcludedTitle": "Formulaire config — chemins JSON masqués",
+    "configFormExcludedHint": "Chemins avec points (ex. auth.cleApi ou items.0.secret) : masqués dans l’aperçu. Utilisez * pour un segment quelconque — ex. users.*.password masque password pour chaque entrée du tableau users. Le fichier sur disque reste inchangé.",
+    "configFormExcludedPlaceholder": "ex. users.*.motDePasse",
+    "addConfigFormExcluded": "Ajouter le chemin",
+    "removeConfigFormExcluded": "Retirer",
+    "clearAllConfigFormExcluded": "Tout effacer",
+    "configFormExcludedEmpty": "Aucun chemin masqué. Ajoutez les chemins sensibles pour qu’ils n’apparaissent pas dans l’aperçu structuré.",
     "workspaceRootLabel": "Dossier de travail (les chemins relatifs partent de ce répertoire) :",
     "lmdbHint": "Chemin vers un répertoire LMDB : absolu, ou relatif au dossier de travail ci-dessus. S’il est vide, LMDB_PATH de l’environnement est utilisé pour charger les clés.",
     "lmdbPlaceholder": "ex. data/db ou C:\\\\chemin\\\\vers\\\\lmdb",
@@ -85,6 +106,7 @@
   },
   "confirm": {
     "clearIgnored": "Supprimer tous les noms de dossiers ignorés ? Ces dossiers réapparaîtront dans la barre latérale partout.",
-    "clearIgnoredExtensions": "Supprimer toutes les extensions ignorées ? Les fichiers correspondants réapparaîtront dans l’explorateur."
+    "clearIgnoredExtensions": "Supprimer toutes les extensions ignorées ? Les fichiers correspondants réapparaîtront dans l’explorateur.",
+    "clearConfigFormExcluded": "Supprimer tous les chemins JSON masqués ? Le fichier de configuration n’est pas modifié ; l’aperçu affichera de nouveau l’arbre complet."
   }
 }

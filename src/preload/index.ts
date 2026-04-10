@@ -133,6 +133,30 @@ const api: AppAPI = {
     return (): void => {
       ipcRenderer.removeListener(channel, fn)
     }
+  },
+  setWorkspaceConfigFile: (relativePath: string | null) =>
+    ipcRenderer.invoke('config:setWorkspaceConfigFile', relativePath ?? ''),
+  subscribeWorkspaceConfigFileChanged: (handler: () => void): (() => void) => {
+    const channel = 'config:workspaceConfigFileChanged'
+    const fn = (): void => {
+      handler()
+    }
+    ipcRenderer.on(channel, fn)
+    return (): void => {
+      ipcRenderer.removeListener(channel, fn)
+    }
+  },
+  setConfigFormExcludedPaths: (paths: string[]) =>
+    ipcRenderer.invoke('config:setConfigFormExcludedPaths', paths),
+  subscribeConfigFormExcludedPathsChanged: (handler: () => void): (() => void) => {
+    const channel = 'config:configFormExcludedPathsChanged'
+    const fn = (): void => {
+      handler()
+    }
+    ipcRenderer.on(channel, fn)
+    return (): void => {
+      ipcRenderer.removeListener(channel, fn)
+    }
   }
 }
 

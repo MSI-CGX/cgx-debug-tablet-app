@@ -24,6 +24,16 @@
     "imageBadgeHint": "Preview as image (Settings → file extensions).",
     "mapBadge": "map",
     "mapBadgeHint": "This GeoJSON file is on the map (Settings → remove or right-click the file).",
+    "configFileBadge": "cfg",
+    "configFileBadgeHint": "Designated workspace config file (JSON). Preview opens as a structured form.",
+    "configPreviewLead": "Workspace config (read-only JSON view):",
+    "configFormScrollToRoot": "Scroll to root",
+    "configTreeArray": "List",
+    "configTreeObject": "Group",
+    "configTreePathsExcluded": "All entries at this level are hidden by path rules in Settings.",
+    "configTreeContextAddExcluded": "Add to hidden paths (Settings)",
+    "configTreeContextAlreadyExcluded": "Already hidden",
+    "configTreeContextCopyPath": "Copy path",
     "favoritesAria": "Favorite shortcuts"
   },
   "settings": {
@@ -51,6 +61,17 @@
     "geoMapEmpty": "No GeoJSON layers on the map yet.",
     "openMapWindow": "Open map window",
     "removeGeoLayer": "Remove from map",
+    "workspaceConfigTitle": "Workspace config file",
+    "workspaceConfigHint": "One JSON file can be designated per workspace (Explorer → right-click a file). It opens in the preview as nested sections and fields.",
+    "workspaceConfigEmpty": "No workspace config file is set.",
+    "workspaceConfigClear": "Clear designation",
+    "configFormExcludedTitle": "Workspace config form — hidden JSON paths",
+    "configFormExcludedHint": "Dotted paths (e.g. auth.apiKey or items.0.secret) are not shown in the config preview. Use one * to match any single segment — e.g. users.*.password hides password under every user in an array. The file on disk is unchanged.",
+    "configFormExcludedPlaceholder": "e.g. users.*.password",
+    "addConfigFormExcluded": "Add path",
+    "removeConfigFormExcluded": "Remove",
+    "clearAllConfigFormExcluded": "Clear all paths",
+    "configFormExcludedEmpty": "No paths hidden. Add sensitive paths so they never appear in the structured preview.",
     "workspaceRootLabel": "Workspace folder (relative paths are based on this directory):",
     "lmdbHint": "Path to an LMDB database directory: absolute, or relative to the workspace folder above. If empty, LMDB_PATH from the environment is used when loading keys.",
     "lmdbPlaceholder": "e.g. data/db or C:\\\\path\\\\to\\\\lmdb-dir",
@@ -85,6 +106,7 @@
   },
   "confirm": {
     "clearIgnored": "Remove all ignored folder names? Those folders will show again in the sidebar everywhere.",
-    "clearIgnoredExtensions": "Remove all ignored file extensions? Matching files will show again in the explorer."
+    "clearIgnoredExtensions": "Remove all ignored file extensions? Matching files will show again in the explorer.",
+    "clearConfigFormExcluded": "Remove all hidden JSON paths? The config file is not modified; the preview will show the full tree again."
   }
 }

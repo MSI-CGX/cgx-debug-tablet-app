@@ -660,6 +660,181 @@
   vertical-align: middle;
 }
 
+.badge.config {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #80cbc4;
+  background: #1e3533;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.config-json-preview {
+  padding: 0.25rem 0;
+}
+
+.config-json-preview-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  background: #1a1d24;
+  padding: 0.35rem 0 0.5rem;
+  margin: 0 0 0.5rem;
+  border-bottom: 1px solid #2d3139;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.config-json-preview-sticky-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.config-json-preview-lead {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 10rem;
+}
+
+.config-json-scroll-root {
+  flex-shrink: 0;
+}
+
+.json-config-excluded-hint {
+  margin: 0.35rem 0 0;
+  padding-left: 0.15rem;
+}
+
+.json-config-row-context {
+  cursor: context-menu;
+}
+
+.json-config-summary-context {
+  cursor: context-menu;
+}
+
+.json-config-context-menu {
+  min-width: 11rem;
+  padding: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid #3c4043;
+  background: #1e2128;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.json-config-context-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.65rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #e8eaed;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.json-config-context-menu-item:hover:not(:disabled) {
+  background: #2d3139;
+}
+
+.json-config-context-menu-item:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.settings-config-excluded-input {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+
+.json-config-tree {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #e8eaed;
+}
+
+.json-config-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0.25rem 0;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid #2d3139;
+}
+
+.json-config-key {
+  flex: 0 0 auto;
+  min-width: 6rem;
+  font-weight: 500;
+  color: #8ab4f8;
+}
+
+.json-config-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #3c4043;
+  background: #0f1115;
+  color: #e8eaed;
+  font-size: 0.8rem;
+  font-family: ui-monospace, monospace;
+}
+
+.json-config-primitive {
+  font-size: 0.8rem;
+  color: #bdc1c6;
+}
+
+.json-config-primitive.null {
+  color: #9aa0a6;
+}
+
+.json-config-empty {
+  font-family: ui-monospace, monospace;
+  color: #9aa0a6;
+  font-size: 0.8rem;
+}
+
+.json-config-details {
+  margin: 0.35rem 0;
+  border: 1px solid #2d3139;
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  background: #14171c;
+}
+
+.json-config-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #e8eaed;
+  list-style: none;
+}
+
+.json-config-summary::-webkit-details-marker {
+  display: none;
+}
+
+.json-config-children {
+  margin-top: 0.35rem;
+  padding-left: 0.25rem;
+  border-left: 2px solid #2d3139;
+}
+
+.settings-workspace-config-row {
+  align-items: flex-start;
+}
+
 .preview-image {
   display: block;
   max-width: 100%;
