@@ -8,7 +8,13 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
-import type { FolderEntry } from '../../preload/types'
+import type {
+  FavoriteEntry,
+  FolderEntry,
+  GeoJsonMapLayerEntry,
+  LogHighlightRule
+} from '../../preload/types'
+import LogHighlightedPre from '@/components/LogHighlightedPre'
 import i18n from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import SettingsView from './SettingsView'
@@ -37,6 +43,18 @@ function pathBasename(absolutePath: string): string {
   const trimmed = absolutePath.replace(/[/\\]+$/, '')
   const parts = trimmed.split(/[/\\]/).filter(Boolean)
   return parts.length > 0 ? parts[parts.length - 1]! : absolutePath
+}
+
+/** True for typical log filenames: *.log, *.log.* (rotated), etc. */
+function isLogLikeFileName(fileName: string): boolean {
+  const lower = fileName.toLowerCase()
+  if (lower.endsWith('.log')) return true
+  // Rotated / split: app.log.1, app.log.old
+  return /\.log\./.test(lower)
+}
+
+function normalizePathForCompare(p: string): string {
+  return p.replace(/\\/g, '/')
 }
 
 function pathSeparatorFor(rootPath: string, relativeDir: string): '\\' | '/' {
@@ -74,8 +92,13 @@ export default function App(): JSX.Element {
   const [rootPath, setRootPath] = useState<string | null>(null)
   const [relativeDir, setRelativeDir] = useState('')
   const [entries, setEntries] = useState<FolderEntry[]>([])
-  const [selectedFile, setSelectedFile] = useState<FolderEntry | null>(null)
+  const [selectedEntry, setSelectedEntry] = useState<FolderEntry | null>(null)
   const [content, setContent] = useState<string>('')
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [logHighlightRules, setLogHighlightRules] = useState<LogHighlightRule[]>([])
+  const [logHighlightForAllText, setLogHighlightForAllText] = useState(false)
+  const [favorites, setFavorites] = useState<FavoriteEntry[]>([])
+  const [geoJsonMapLayers, setGeoJsonMapLayers] = useState<GeoJsonMapLayerEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [listLoading, setListLoading] = useState(false)
   const [readLoading, setReadLoading] = useState(false)
@@ -99,11 +122,59 @@ export default function App(): JSX.Element {
     return unsub
   }, [])
 
+  useEffect(() => {
+    const loadLogSettings = async (): Promise<void> => {
+      const snap = await window.api.getConfigSnapshot()
+      setLogHighlightRules(snap.logHighlightRules)
+      setLogHighlightForAllText(snap.logHighlightForAllTextFiles)
+    }
+    void loadLogSettings()
+    const unsub = window.api.subscribeLogRulesChanged(() => {
+      void loadLogSettings()
+    })
+    return unsub
+  }, [])
+
+  const refreshFavorites = useCallback(async () => {
+    const snap = await window.api.getConfigSnapshot()
+    setFavorites(snap.favorites)
+  }, [])
+
+  useEffect(() => {
+    void refreshFavorites()
+    const unsub = window.api.subscribeFavoritesChanged(() => {
+      void refreshFavorites()
+    })
+    return unsub
+  }, [refreshFavorites])
+
+  const refreshGeoJsonMapLayers = useCallback(async () => {
+    const snap = await window.api.getConfigSnapshot()
+    setGeoJsonMapLayers(snap.geoJsonMapLayers ?? [])
+  }, [])
+
+  useEffect(() => {
+    void refreshGeoJsonMapLayers()
+    const unsub = window.api.subscribeGeoJsonMapLayersChanged(() => {
+      void refreshGeoJsonMapLayers()
+    })
+    return unsub
+  }, [refreshGeoJsonMapLayers])
+
+  const geoJsonPathSet = useMemo(() => {
+    const s = new Set<string>()
+    for (const l of geoJsonMapLayers) {
+      s.add(normalizePathForCompare(l.relativePath))
+    }
+    return s
+  }, [geoJsonMapLayers])
+
   const loadContents = useCallback(async (folderRoot: string, subPath: string) => {
     setError(null)
     setListLoading(true)
-    setSelectedFile(null)
+    setSelectedEntry(null)
     setContent('')
+    setImagePreviewUrl(null)
     try {
       const list = await window.api.listFolderContents(folderRoot, subPath)
       setEntries(list)
@@ -130,25 +201,42 @@ export default function App(): JSX.Element {
     return unsub
   }, [reloadExplorerIfNeeded])
 
-  const readFileContent = useCallback(async (file: FolderEntry): Promise<void> => {
-    if (!rootPath || file.kind !== 'file') return
-    setError(null)
-    setReadLoading(true)
-    setContent('')
-    try {
-      const text = await window.api.readFileText(rootPath, file.relativePath)
-      setContent(text)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setReadLoading(false)
-    }
-  }, [rootPath])
+  const loadEntryPreview = useCallback(
+    async (entry: FolderEntry): Promise<void> => {
+      if (!rootPath) return
+      setError(null)
+      setReadLoading(true)
+      setContent('')
+      setImagePreviewUrl(null)
+      try {
+        if (entry.readMode === 'lmdb') {
+          const res = await window.api.previewLmdbAt(rootPath, entry.relativePath)
+          if (res.error) {
+            setError(res.error)
+          } else if (res.keys.length === 0) {
+            setContent(t('lmdb.empty'))
+          } else {
+            setContent(res.keys.join('\n'))
+          }
+        } else if (entry.kind === 'file' && entry.readMode === 'image') {
+          const res = await window.api.readImagePreview(rootPath, entry.relativePath)
+          setImagePreviewUrl(`data:${res.mime};base64,${res.dataBase64}`)
+        } else if (entry.kind === 'file') {
+          const text = await window.api.readFileText(rootPath, entry.relativePath)
+          setContent(text)
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setReadLoading(false)
+      }
+    },
+    [rootPath, t]
+  )
 
   useEffect(() => {
-    selectedPathRef.current =
-      selectedFile?.kind === 'file' ? selectedFile.relativePath : null
-  }, [selectedFile])
+    selectedPathRef.current = selectedEntry?.relativePath ?? null
+  }, [selectedEntry])
 
   useEffect(() => {
     const unsub = window.api.subscribeFileBindingsChanged(() => {
@@ -157,17 +245,65 @@ export default function App(): JSX.Element {
         const list = await window.api.listFolderContents(rootPath, relativeDir)
         setEntries(list)
         const p = selectedPathRef.current
-        if (p) {
-          const file = list.find((e) => e.kind === 'file' && e.relativePath === p)
-          if (file) {
-            setSelectedFile(file)
-            await readFileContent(file)
-          }
+        if (!p) return
+        const next = list.find((e) => e.relativePath === p)
+        if (!next) return
+        setSelectedEntry(next)
+        if (next.kind === 'file' || next.readMode === 'lmdb') {
+          await loadEntryPreview(next)
         }
       })()
     })
     return unsub
-  }, [rootPath, relativeDir, readFileContent])
+  }, [rootPath, relativeDir, loadEntryPreview])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const snap = await window.api.getConfigSnapshot()
+      if (cancelled || !snap.workspaceRoot) return
+      setRootPath(snap.workspaceRoot)
+      setRelativeDir('')
+      await loadContents(snap.workspaceRoot, '')
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [loadContents])
+
+  const handleFavoriteOpen = useCallback(
+    async (id: string): Promise<void> => {
+      setError(null)
+      const res = await window.api.openFavorite(id)
+      if (!res.ok) {
+        setError(res.error)
+        return
+      }
+      setPage('explorer')
+      setRootPath(res.rootPath)
+      setRelativeDir(res.relativeDir)
+      const list = await loadContents(res.rootPath, res.relativeDir)
+      if (res.selectRelativePath) {
+        const target = normalizePathForCompare(res.selectRelativePath)
+        const match = list.find(
+          (e) =>
+            e.kind === 'file' &&
+            normalizePathForCompare(e.relativePath) === target
+        )
+        if (match) {
+          setSelectedEntry(match)
+          await loadEntryPreview(match)
+        }
+      }
+    },
+    [loadContents, loadEntryPreview]
+  )
+
+  const handleFavoriteContextMenu = (e: MouseEvent, favoriteId: string): void => {
+    e.preventDefault()
+    e.stopPropagation()
+    window.api.showFavoriteContextMenu(favoriteId, e.screenX, e.screenY)
+  }
 
   const handleOpenFolder = async (): Promise<void> => {
     setError(null)
@@ -176,12 +312,6 @@ export default function App(): JSX.Element {
     setRootPath(picked)
     setRelativeDir('')
     await loadContents(picked, '')
-  }
-
-  const handleEnterDirectory = (dir: FolderEntry): void => {
-    if (!rootPath || dir.kind !== 'directory') return
-    setRelativeDir(dir.relativePath)
-    void loadContents(rootPath, dir.relativePath)
   }
 
   const handleGoUp = (): void => {
@@ -199,19 +329,44 @@ export default function App(): JSX.Element {
 
   const breadcrumbItems = useMemo(() => {
     if (!rootPath) return []
-    return buildBreadcrumbItems(rootPath, relativeDir)
-  }, [rootPath, relativeDir])
+    const items = buildBreadcrumbItems(rootPath, relativeDir)
+    if (selectedEntry?.kind === 'file') {
+      return [...items, { label: selectedEntry.name, relativePath: '\u0000file' }]
+    }
+    return items
+  }, [rootPath, relativeDir, selectedEntry])
 
   const handleSelectFile = async (file: FolderEntry): Promise<void> => {
     if (!rootPath || file.kind !== 'file') return
-    setSelectedFile(file)
-    await readFileContent(file)
+    setSelectedEntry(file)
+    await loadEntryPreview(file)
   }
 
-  const handleFolderContextMenu = (e: MouseEvent, folderName: string): void => {
+  const handleEnterDirectoryFromList = (dir: FolderEntry): void => {
+    if (!rootPath || dir.kind !== 'directory') return
+    setRelativeDir(dir.relativePath)
+    void loadContents(rootPath, dir.relativePath)
+  }
+
+  const handleDirectoryClick = (entry: FolderEntry, e: MouseEvent): void => {
+    if (!rootPath || entry.kind !== 'directory') return
+    if (entry.readMode === 'lmdb') {
+      if (e.detail === 2) {
+        handleEnterDirectoryFromList(entry)
+      } else if (e.detail === 1) {
+        setSelectedEntry(entry)
+        void loadEntryPreview(entry)
+      }
+    } else {
+      handleEnterDirectoryFromList(entry)
+    }
+  }
+
+  const handleFolderContextMenu = (e: MouseEvent, entry: FolderEntry): void => {
     e.preventDefault()
     e.stopPropagation()
-    window.api.showFolderContextMenu(folderName, e.screenX, e.screenY)
+    if (!rootPath || entry.kind !== 'directory') return
+    window.api.showFolderContextMenu(rootPath, entry.relativePath, e.screenX, e.screenY)
   }
 
   const handleFileContextMenu = (e: MouseEvent, entry: FolderEntry): void => {
@@ -224,33 +379,71 @@ export default function App(): JSX.Element {
   const currentFullPath =
     rootPath && relativeDir ? joinRootDisplay(rootPath, relativeDir) : rootPath
 
+  const useLogHighlight =
+    selectedEntry?.kind === 'file' &&
+    !imagePreviewUrl &&
+    logHighlightRules.length > 0 &&
+    (logHighlightForAllText || isLogLikeFileName(selectedEntry.name))
+
+  const isFileOnGeoMap = (entry: FolderEntry): boolean =>
+    entry.kind === 'file' && geoJsonPathSet.has(normalizePathForCompare(entry.relativePath))
+
   return (
     <div className="layout">
       <header className="header">
         <div className="header-brand">
           <h1>{t('app.title')}</h1>
         </div>
-        <nav className="nav-tabs" aria-label={t('app.navMain')}>
-          <button
-            type="button"
-            className={page === 'explorer' ? 'nav-tab active' : 'nav-tab'}
-            onClick={() => setPage('explorer')}
-          >
-            {t('app.navExplorer')}
-          </button>
-          <button
-            type="button"
-            className={page === 'settings' ? 'nav-tab active' : 'nav-tab'}
-            onClick={() => setPage('settings')}
-          >
-            {t('app.navSettings')}
-          </button>
-        </nav>
-        <div className="header-trailing">
+        <div className="header-center">
+          <nav className="nav-tabs" aria-label={t('app.navMain')}>
+            <button
+              type="button"
+              className={page === 'explorer' ? 'nav-tab active' : 'nav-tab'}
+              onClick={() => setPage('explorer')}
+            >
+              {t('app.navExplorer')}
+            </button>
+            <button
+              type="button"
+              className={page === 'settings' ? 'nav-tab active' : 'nav-tab'}
+              onClick={() => setPage('settings')}
+            >
+              {t('app.navSettings')}
+            </button>
+          </nav>
+          {favorites.length > 0 ? (
+            <div
+              className="header-favorites"
+              role="toolbar"
+              aria-label={t('app.favoritesAria')}
+            >
+              {favorites.map((f) => (
+                <Button
+                  key={f.id}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="favorite-chip"
+                  title={f.relativePath}
+                  onClick={() => void handleFavoriteOpen(f.id)}
+                  onContextMenu={(e) => handleFavoriteContextMenu(e, f.id)}
+                >
+                  {f.label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <div className="header-trailing header-trailing-actions">
           {page === 'explorer' && (
-            <Button type="button" onClick={handleOpenFolder}>
-              {t('app.openFolder')}
-            </Button>
+            <>
+              <Button type="button" variant="outline" onClick={() => window.api.openMapWindow()}>
+                {t('app.openMap')}
+              </Button>
+              <Button type="button" onClick={handleOpenFolder}>
+                {t('app.openFolder')}
+              </Button>
+            </>
           )}
         </div>
       </header>
@@ -316,26 +509,33 @@ export default function App(): JSX.Element {
                 <p className="muted">{t('app.folderEmpty')}</p>
               )}
               <ul className="file-list">
-                {entries.map((entry) => (
+                {entries.map((entry) => {
+                  const isSelected =
+                    selectedEntry?.relativePath === entry.relativePath &&
+                    (entry.kind === 'file' || entry.readMode === 'lmdb')
+                  return (
                   <li key={`${entry.kind}:${entry.relativePath}`}>
                     {entry.kind === 'directory' ? (
                       <button
                         type="button"
-                        className="file dir"
-                        onClick={() => handleEnterDirectory(entry)}
-                        onContextMenu={(e) => handleFolderContextMenu(e, entry.name)}
+                        className={isSelected ? 'file dir active' : 'file dir'}
+                        onClick={(e) => handleDirectoryClick(entry, e)}
+                        onContextMenu={(e) => handleFolderContextMenu(e, entry)}
                       >
                         <span className="file-name">
                           <span className="badge folder">{t('app.folderBadge')}</span>
+                          {entry.readMode === 'lmdb' ? (
+                            <span className="badge lmdb" title={t('app.lmdbBadgeHint')}>
+                              {t('app.lmdbBadge')}
+                            </span>
+                          ) : null}
                           {entry.name}
                         </span>
                       </button>
                     ) : (
                       <button
                         type="button"
-                        className={
-                          selectedFile?.relativePath === entry.relativePath ? 'file active' : 'file'
-                        }
+                        className={isSelected ? 'file active' : 'file'}
                         onClick={() => handleSelectFile(entry)}
                         onContextMenu={(e) => handleFileContextMenu(e, entry)}
                       >
@@ -345,13 +545,29 @@ export default function App(): JSX.Element {
                               {t('app.encryptedBadge')}
                             </span>
                           ) : null}
+                          {entry.readMode === 'lmdb' ? (
+                            <span className="badge lmdb" title={t('app.lmdbBadgeHint')}>
+                              {t('app.lmdbBadge')}
+                            </span>
+                          ) : null}
+                          {entry.readMode === 'image' ? (
+                            <span className="badge image" title={t('app.imageBadgeHint')}>
+                              {t('app.imageBadge')}
+                            </span>
+                          ) : null}
+                          {isFileOnGeoMap(entry) ? (
+                            <span className="badge map" title={t('app.mapBadgeHint')}>
+                              {t('app.mapBadge')}
+                            </span>
+                          ) : null}
                           {entry.name}
                         </span>
                         <span className="file-size">{formatBytes(entry.size ?? 0)}</span>
                       </button>
                     )}
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             </aside>
 
@@ -359,8 +575,20 @@ export default function App(): JSX.Element {
               <h2>{t('app.previewTitle')}</h2>
               <div className="preview-scroll">
                 {readLoading && <p className="muted">{t('app.readingFile')}</p>}
-                {selectedFile && !readLoading && <pre className="content">{content}</pre>}
-                {!selectedFile && !readLoading && (
+                {selectedEntry && !readLoading && imagePreviewUrl ? (
+                  <img
+                    className="preview-image"
+                    src={imagePreviewUrl}
+                    alt={selectedEntry.name}
+                  />
+                ) : null}
+                {selectedEntry && !readLoading && !imagePreviewUrl && useLogHighlight ? (
+                  <LogHighlightedPre content={content} rules={logHighlightRules} />
+                ) : null}
+                {selectedEntry && !readLoading && !imagePreviewUrl && !useLogHighlight ? (
+                  <pre className="content">{content}</pre>
+                ) : null}
+                {!selectedEntry && !readLoading && (
                   <p className="muted preview-hint">{t('app.previewHint')}</p>
                 )}
               </div>

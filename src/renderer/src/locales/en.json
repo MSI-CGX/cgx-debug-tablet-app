@@ -5,6 +5,7 @@
     "navExplorer": "Explorer",
     "navSettings": "Settings",
     "openFolder": "Open folder",
+    "openMap": "Map",
     "breadcrumbAria": "Folder path",
     "up": "Up",
     "sidebarTitle": "Folders & files",
@@ -16,7 +17,14 @@
     "readingFile": "Reading file…",
     "previewHint": "Select a file to read its text content, or open a subfolder. Use Settings to restore ignored folders.",
     "encryptedBadge": "enc",
-    "encryptedBadgeHint": "This file is opened as electron-store encrypted (right-click to change)."
+    "encryptedBadgeHint": "This file is opened as electron-store encrypted (right-click to change).",
+    "lmdbBadge": "db",
+    "lmdbBadgeHint": "Opened as LMDB (right-click to change). Double-click the folder to browse inside.",
+    "imageBadge": "img",
+    "imageBadgeHint": "Preview as image (Settings → file extensions).",
+    "mapBadge": "map",
+    "mapBadgeHint": "This GeoJSON file is on the map (Settings → remove or right-click the file).",
+    "favoritesAria": "Favorite shortcuts"
   },
   "settings": {
     "title": "Settings",
@@ -30,14 +38,45 @@
     "ignoredHint": "Folders you hide via right-click → \"Ignore folder\" are listed here. Use \"Restore\" to show one name again, or \"Restore all\" to clear the list.",
     "restore": "Restore",
     "ignoredEmpty": "No ignored folder names.",
+    "ignoredExtTitle": "Ignored file extensions",
+    "ignoredExtHint": "Files with these extensions are hidden in the explorer (e.g. tmp, map). Enter without the dot.",
+    "ignoredExtPlaceholder": "e.g. tmp",
+    "addIgnoredExt": "Add extension",
+    "removeIgnoredExt": "Remove",
+    "clearAllIgnoredExt": "Clear all",
+    "ignoredExtEmpty": "No ignored extensions.",
     "lmdbTitle": "LMDB preview",
-    "lmdbHint": "Absolute path to an LMDB database directory. If empty, LMDB_PATH from the environment is used when loading keys.",
-    "lmdbPlaceholder": "C:\\\\path\\\\to\\\\lmdb-dir",
+    "geoMapTitle": "GeoJSON map",
+    "geoMapHint": "Layers added from the explorer (right-click a .geojson file → Add to map) are stored here as paths relative to the workspace folder.",
+    "geoMapEmpty": "No GeoJSON layers on the map yet.",
+    "openMapWindow": "Open map window",
+    "removeGeoLayer": "Remove from map",
+    "workspaceRootLabel": "Workspace folder (relative paths are based on this directory):",
+    "lmdbHint": "Path to an LMDB database directory: absolute, or relative to the workspace folder above. If empty, LMDB_PATH from the environment is used when loading keys.",
+    "lmdbPlaceholder": "e.g. data/db or C:\\\\path\\\\to\\\\lmdb-dir",
     "savePath": "Save path",
     "loadSampleKeys": "Load sample keys",
     "storeKeyHint": "Encrypted file preview: set STORE_KEY in the project `.env` (same key as electron-store encryptionKey) so the app can decrypt.",
     "storeKeyOk": "STORE_KEY: set",
-    "storeKeyMissing": "STORE_KEY: not set"
+    "storeKeyMissing": "STORE_KEY: not set",
+    "extensionTitle": "File extensions",
+    "extensionHint": "Choose whether files with each extension open as UTF-8 text or as an image preview. Built-in defaults include common image types; you can add or override (e.g. svg as text for source editing).",
+    "extPlaceholder": "png",
+    "kindText": "Text",
+    "kindImage": "Image",
+    "saveExtensions": "Save extensions",
+    "resetExtensions": "Reset to defaults",
+    "addExtension": "Add row",
+    "removeExtension": "Remove",
+    "logsTitle": "Log highlighting",
+    "logsHint": "Lines are colored by the first rule whose text appears as a substring (order matters). By default, highlighting applies to files ending in .log only.",
+    "logForAllTextLabel": "Apply these rules to all text previews (not only .log files)",
+    "saveLogRules": "Save log rules",
+    "resetLogRules": "Reset log rules to defaults",
+    "addLogRule": "Add rule",
+    "removeLogRule": "Remove",
+    "logMatchPlaceholder": "Substring e.g. ERROR",
+    "logColor": "Color"
   },
   "lmdb": {
     "loading": "Loading…",
@@ -45,6 +84,7 @@
     "empty": "No keys (empty path or empty database)."
   },
   "confirm": {
-    "clearIgnored": "Remove all ignored folder names? Those folders will show again in the sidebar everywhere."
+    "clearIgnored": "Remove all ignored folder names? Those folders will show again in the sidebar everywhere.",
+    "clearIgnoredExtensions": "Remove all ignored file extensions? Matching files will show again in the explorer."
   }
 }

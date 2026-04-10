@@ -5,6 +5,7 @@
     "navExplorer": "Explorateur",
     "navSettings": "Paramètres",
     "openFolder": "Ouvrir un dossier",
+    "openMap": "Carte",
     "breadcrumbAria": "Chemin du dossier",
     "up": "Niveau supérieur",
     "sidebarTitle": "Dossiers et fichiers",
@@ -16,7 +17,14 @@
     "readingFile": "Lecture du fichier…",
     "previewHint": "Sélectionnez un fichier pour afficher son texte, ou ouvrez un sous-dossier. Utilisez Paramètres pour réafficher les dossiers ignorés.",
     "encryptedBadge": "chif",
-    "encryptedBadgeHint": "Ce fichier est ouvert comme chiffré electron-store (clic droit pour changer)."
+    "encryptedBadgeHint": "Ce fichier est ouvert comme chiffré electron-store (clic droit pour changer).",
+    "lmdbBadge": "db",
+    "lmdbBadgeHint": "Ouvert comme LMDB (clic droit pour changer). Double-cliquez le dossier pour entrer dedans.",
+    "imageBadge": "img",
+    "imageBadgeHint": "Aperçu image (Paramètres → extensions de fichiers).",
+    "mapBadge": "carte",
+    "mapBadgeHint": "Ce fichier GeoJSON est sur la carte (Paramètres → retirer ou clic droit sur le fichier).",
+    "favoritesAria": "Raccourcis favoris"
   },
   "settings": {
     "title": "Paramètres",
@@ -30,14 +38,45 @@
     "ignoredHint": "Les dossiers masqués via clic droit → « Ignorer le dossier » apparaissent ici. Utilisez « Restaurer » pour un nom, ou « Tout restaurer » pour vider la liste.",
     "restore": "Restaurer",
     "ignoredEmpty": "Aucun dossier ignoré.",
+    "ignoredExtTitle": "Extensions de fichiers ignorées",
+    "ignoredExtHint": "Les fichiers avec ces extensions sont masqués dans l’explorateur (ex. tmp, map). Saisie sans point.",
+    "ignoredExtPlaceholder": "ex. tmp",
+    "addIgnoredExt": "Ajouter l’extension",
+    "removeIgnoredExt": "Retirer",
+    "clearAllIgnoredExt": "Tout effacer",
+    "ignoredExtEmpty": "Aucune extension ignorée.",
     "lmdbTitle": "Aperçu LMDB",
-    "lmdbHint": "Chemin absolu vers un répertoire de base LMDB. S’il est vide, LMDB_PATH de l’environnement est utilisé pour charger les clés.",
-    "lmdbPlaceholder": "C:\\\\chemin\\\\vers\\\\lmdb",
+    "geoMapTitle": "Carte GeoJSON",
+    "geoMapHint": "Les couches ajoutées depuis l’explorateur (clic droit sur un fichier .geojson → Ajouter à la carte) sont enregistrées ici en chemins relatifs au dossier de travail.",
+    "geoMapEmpty": "Aucune couche GeoJSON sur la carte pour l’instant.",
+    "openMapWindow": "Ouvrir la fenêtre carte",
+    "removeGeoLayer": "Retirer de la carte",
+    "workspaceRootLabel": "Dossier de travail (les chemins relatifs partent de ce répertoire) :",
+    "lmdbHint": "Chemin vers un répertoire LMDB : absolu, ou relatif au dossier de travail ci-dessus. S’il est vide, LMDB_PATH de l’environnement est utilisé pour charger les clés.",
+    "lmdbPlaceholder": "ex. data/db ou C:\\\\chemin\\\\vers\\\\lmdb",
     "savePath": "Enregistrer le chemin",
     "loadSampleKeys": "Charger un échantillon de clés",
     "storeKeyHint": "Aperçu des fichiers chiffrés : définissez STORE_KEY dans le `.env` du projet (même clé que encryptionKey d’electron-store) pour permettre le déchiffrement.",
     "storeKeyOk": "STORE_KEY : défini",
-    "storeKeyMissing": "STORE_KEY : absent"
+    "storeKeyMissing": "STORE_KEY : absent",
+    "extensionTitle": "Extensions de fichiers",
+    "extensionHint": "Choisissez si chaque extension s’ouvre en texte UTF-8 ou en aperçu image. Les valeurs par défaut couvrent les images courantes ; vous pouvez ajouter ou surcharger (ex. svg en texte pour le code source).",
+    "extPlaceholder": "png",
+    "kindText": "Texte",
+    "kindImage": "Image",
+    "saveExtensions": "Enregistrer les extensions",
+    "resetExtensions": "Réinitialiser les défauts",
+    "addExtension": "Ajouter une ligne",
+    "removeExtension": "Supprimer",
+    "logsTitle": "Coloration des journaux",
+    "logsHint": "Chaque ligne prend la couleur de la première règle dont le texte apparaît en sous-chaîne (l’ordre compte). Par défaut, seuls les fichiers en .log sont concernés.",
+    "logForAllTextLabel": "Appliquer ces règles à tous les aperçus texte (pas seulement .log)",
+    "saveLogRules": "Enregistrer les règles",
+    "resetLogRules": "Réinitialiser les règles par défaut",
+    "addLogRule": "Ajouter une règle",
+    "removeLogRule": "Supprimer",
+    "logMatchPlaceholder": "Sous-chaîne ex. ERROR",
+    "logColor": "Couleur"
   },
   "lmdb": {
     "loading": "Chargement…",
@@ -45,6 +84,7 @@
     "empty": "Aucune clé (chemin vide ou base vide)."
   },
   "confirm": {
-    "clearIgnored": "Supprimer tous les noms de dossiers ignorés ? Ces dossiers réapparaîtront dans la barre latérale partout."
+    "clearIgnored": "Supprimer tous les noms de dossiers ignorés ? Ces dossiers réapparaîtront dans la barre latérale partout.",
+    "clearIgnoredExtensions": "Supprimer toutes les extensions ignorées ? Les fichiers correspondants réapparaîtront dans l’explorateur."
   }
 }

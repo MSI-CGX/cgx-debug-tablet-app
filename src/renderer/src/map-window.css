@@ -1,0 +1,56 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #0f1115;
+}
+
+.map-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.map-app-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #1a1d24;
+  border-bottom: 1px solid #2d3139;
+}
+
+.map-app-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e8eaed;
+}
+
+.map-app-status {
+  font-size: 0.8rem;
+  color: #9aa0a6;
+}
+
+.map-app-error {
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  background: #3c1f1f;
+  color: #f28b82;
+  font-size: 0.85rem;
+}
+
+.map-app-leaflet {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.leaflet-container {
+  font-family: system-ui, sans-serif;
+  background: #1a1d24;
+}

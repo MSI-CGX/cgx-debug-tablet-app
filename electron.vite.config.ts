@@ -17,6 +17,14 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
-    plugins: [tailwindcss(), react()]
+    plugins: [tailwindcss(), react()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/renderer/index.html'),
+          map: resolve('src/renderer/map.html')
+        }
+      }
+    }
   }
 })
