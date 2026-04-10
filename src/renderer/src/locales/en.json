@@ -1,0 +1,45 @@
+{
+  "app": {
+    "title": "Folder reader",
+    "navMain": "Main navigation",
+    "navExplorer": "Explorer",
+    "navSettings": "Settings",
+    "openFolder": "Open folder",
+    "breadcrumbAria": "Folder path",
+    "up": "Up",
+    "sidebarTitle": "Folders & files",
+    "chooseFolder": "Choose a folder to list its contents.",
+    "loading": "Loading…",
+    "folderEmpty": "This folder is empty.",
+    "folderBadge": "Folder",
+    "previewTitle": "Content",
+    "readingFile": "Reading file…",
+    "previewHint": "Select a file to read its text content, or open a subfolder. Use Settings to restore ignored folders."
+  },
+  "settings": {
+    "title": "Settings",
+    "lead": "Manage ignored folder names and optional LMDB preview. Configuration is stored with <bold>electron-store</bold>.",
+    "storeFile": "Store file:",
+    "languageTitle": "Language",
+    "langEn": "English",
+    "langFr": "French",
+    "ignoredTitle": "Ignored folders",
+    "restoreAll": "Restore all",
+    "ignoredHint": "Folders you hide via right-click → \"Ignore folder\" are listed here. Use \"Restore\" to show one name again, or \"Restore all\" to clear the list.",
+    "restore": "Restore",
+    "ignoredEmpty": "No ignored folder names.",
+    "lmdbTitle": "LMDB preview",
+    "lmdbHint": "Absolute path to an LMDB database directory. If empty, LMDB_PATH from the environment is used when loading keys.",
+    "lmdbPlaceholder": "C:\\\\path\\\\to\\\\lmdb-dir",
+    "savePath": "Save path",
+    "loadSampleKeys": "Load sample keys"
+  },
+  "lmdb": {
+    "loading": "Loading…",
+    "error": "Error: {{error}}",
+    "empty": "No keys (empty path or empty database)."
+  },
+  "confirm": {
+    "clearIgnored": "Remove all ignored folder names? Those folders will show again in the sidebar everywhere."
+  }
+}

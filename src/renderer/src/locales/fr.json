@@ -1,0 +1,45 @@
+{
+  "app": {
+    "title": "Lecteur de dossiers",
+    "navMain": "Navigation principale",
+    "navExplorer": "Explorateur",
+    "navSettings": "Paramètres",
+    "openFolder": "Ouvrir un dossier",
+    "breadcrumbAria": "Chemin du dossier",
+    "up": "Niveau supérieur",
+    "sidebarTitle": "Dossiers et fichiers",
+    "chooseFolder": "Choisissez un dossier pour afficher son contenu.",
+    "loading": "Chargement…",
+    "folderEmpty": "Ce dossier est vide.",
+    "folderBadge": "Dossier",
+    "previewTitle": "Contenu",
+    "readingFile": "Lecture du fichier…",
+    "previewHint": "Sélectionnez un fichier pour afficher son texte, ou ouvrez un sous-dossier. Utilisez Paramètres pour réafficher les dossiers ignorés."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "lead": "Gérez les noms de dossiers ignorés et l’aperçu LMDB optionnel. La configuration est enregistrée avec <bold>electron-store</bold>.",
+    "storeFile": "Fichier du store :",
+    "languageTitle": "Langue",
+    "langEn": "Anglais",
+    "langFr": "Français",
+    "ignoredTitle": "Dossiers ignorés",
+    "restoreAll": "Tout restaurer",
+    "ignoredHint": "Les dossiers masqués via clic droit → « Ignorer le dossier » apparaissent ici. Utilisez « Restaurer » pour un nom, ou « Tout restaurer » pour vider la liste.",
+    "restore": "Restaurer",
+    "ignoredEmpty": "Aucun dossier ignoré.",
+    "lmdbTitle": "Aperçu LMDB",
+    "lmdbHint": "Chemin absolu vers un répertoire de base LMDB. S’il est vide, LMDB_PATH de l’environnement est utilisé pour charger les clés.",
+    "lmdbPlaceholder": "C:\\\\chemin\\\\vers\\\\lmdb",
+    "savePath": "Enregistrer le chemin",
+    "loadSampleKeys": "Charger un échantillon de clés"
+  },
+  "lmdb": {
+    "loading": "Chargement…",
+    "error": "Erreur : {{error}}",
+    "empty": "Aucune clé (chemin vide ou base vide)."
+  },
+  "confirm": {
+    "clearIgnored": "Supprimer tous les noms de dossiers ignorés ? Ces dossiers réapparaîtront dans la barre latérale partout."
+  }
+}
