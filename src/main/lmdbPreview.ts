@@ -1,3 +1,5 @@
+import path from 'node:path'
+
 function keyToLabel(key: unknown): string {
   if (typeof key === 'string') return key
   if (key instanceof Uint8Array || (typeof Buffer !== 'undefined' && Buffer.isBuffer(key))) {
@@ -19,9 +21,13 @@ export async function sampleLmdbKeys(
     return { keys: [] }
   }
 
+  const absPath = path.resolve(trimmed)
+
   try {
     const { open } = await import('lmdb')
-    const db = open(trimmed, {})
+    const db = open(absPath, {
+      readOnly: true
+    })
     const keys: string[] = []
     try {
       for (const { key } of db.getRange({ limit })) {

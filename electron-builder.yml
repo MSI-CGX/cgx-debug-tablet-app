@@ -16,6 +16,10 @@ extraResources:
     to: .
 asarUnpack:
   - resources/**
+  # LMDB ships native .node binaries; they must load from unpacked asar in production.
+  - "**/node_modules/lmdb/**/*"
+# Rebuild native deps (e.g. lmdb) for Electron ABI — required for packaged app runtime.
+npmRebuild: true
 win:
   executableName: electron-app
 nsis:
@@ -42,7 +46,6 @@ linux:
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}
-npmRebuild: false
 publish:
   provider: generic
   url: https://example.com/auto-updates
