@@ -27,6 +27,7 @@ import {
   type LogHighlightRule
 } from './appStore'
 import { resolveFavoriteFromWorkspaceRel, type FavoriteOpenResult } from './favoriteNavigation'
+import { getIotTimelineBounds, queryIotTimelineRange } from './iotTimelineLmdb'
 import { sampleLmdbKeys } from './lmdbPreview'
 import { decryptConfEncryptedBuffer } from './decryptConfFile'
 import { fileBindingKey, resolvePreviewReadMode } from './fileBindings'
@@ -388,8 +389,11 @@ function createWindow(): void {
     width: 960,
     height: 720,
     show: false,
-    resizable: false,
-    maximizable: false,
+    // Required on Windows for the maximize control after restoring from maximized; resizable false disables it.
+    resizable: true,
+    maximizable: true,
+    minWidth: 1024,
+    minHeight: 768,
     autoHideMenuBar: true,
     ...(windowIcon ? { icon: windowIcon } : {}),
     webPreferences: {
@@ -828,6 +832,37 @@ app.whenReady().then(() => {
       }
       const full = assertPathInsideRoot(rootFolderPath, relativePath)
       return sampleLmdbKeys(full)
+    }
+  )
+
+  ipcMain.handle(
+    'lmdb:iotTimelineBounds',
+    async (_, rootFolderPath: string, relativePath: string) => {
+      if (typeof rootFolderPath !== 'string' || typeof relativePath !== 'string') {
+        return { minMs: 0, maxMs: 0, entryCount: 0, error: 'Invalid path' }
+      }
+      const full = assertPathInsideRoot(rootFolderPath, relativePath)
+      return getIotTimelineBounds(full)
+    }
+  )
+
+  ipcMain.handle(
+    'lmdb:iotTimelineQuery',
+    async (
+      _,
+      rootFolderPath: string,
+      relativePath: string,
+      startMs: number,
+      endMs: number
+    ) => {
+      if (typeof rootFolderPath !== 'string' || typeof relativePath !== 'string') {
+        return { rows: [], truncated: false, error: 'Invalid path' }
+      }
+      if (typeof startMs !== 'number' || typeof endMs !== 'number' || !Number.isFinite(startMs + endMs)) {
+        return { rows: [], truncated: false, error: 'Invalid range' }
+      }
+      const full = assertPathInsideRoot(rootFolderPath, relativePath)
+      return queryIotTimelineRange(full, startMs, endMs)
     }
   )
 

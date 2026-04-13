@@ -576,6 +576,289 @@
   font-size: 0.9rem;
 }
 
+.iot-timeline-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  flex: 1;
+}
+
+.iot-timeline-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.iot-timeline-stats {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  line-height: 1.35;
+}
+
+.iot-timeline-stats-count {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.iot-timeline-stats-range {
+  font-size: 0.76rem;
+  color: var(--muted-foreground);
+}
+
+.iot-timeline-range-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 0.75rem;
+}
+
+.iot-timeline-dual-col {
+  flex: 1;
+  min-width: min(100%, 12rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.iot-timeline-dual-wrap {
+  position: relative;
+  flex: 1;
+  min-width: min(100%, 12rem);
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  --iot-start-pct: 0;
+  --iot-end-pct: 100;
+}
+
+.iot-timeline-dual-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 6px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    to right,
+    var(--border) 0 calc(var(--iot-start-pct) * 1%),
+    color-mix(in oklch, var(--primary) 45%, transparent) calc(var(--iot-start-pct) * 1%)
+      calc(var(--iot-end-pct) * 1%),
+    var(--border) calc(var(--iot-end-pct) * 1%) 100%
+  );
+}
+
+.iot-timeline-dual-wrap input[type='range'] {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.iot-timeline-dual-wrap input[type='range']:last-of-type {
+  z-index: 2;
+}
+
+.iot-timeline-dual-wrap input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+  border-radius: 3px;
+}
+
+.iot-timeline-dual-wrap input[type='range']::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--background);
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: grab;
+}
+
+.iot-timeline-dual-wrap input[type='range']::-moz-range-track {
+  height: 6px;
+  background: transparent;
+  border-radius: 3px;
+}
+
+.iot-timeline-dual-wrap input[type='range']::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--background);
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: grab;
+}
+
+.iot-timeline-dual-times {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  width: 100%;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
+.iot-timeline-dual-times time {
+  font-variant-numeric: tabular-nums;
+}
+
+.iot-timeline-range-row {
+  display: grid;
+  grid-template-columns: minmax(4rem, auto) 1fr minmax(10rem, 14rem);
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .iot-timeline-range-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.iot-timeline-label {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.iot-timeline-slider {
+  width: 100%;
+  accent-color: var(--primary);
+}
+
+.iot-timeline-time {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  text-align: right;
+}
+
+.iot-timeline-view-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.iot-timeline-trunc {
+  margin: 0;
+}
+
+.iot-timeline-table-wrap {
+  overflow: auto;
+  max-height: min(55vh, 28rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.iot-timeline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.iot-timeline-table th,
+.iot-timeline-table td {
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.iot-timeline-table th {
+  position: sticky;
+  top: 0;
+  background: var(--background);
+  z-index: 1;
+  color: var(--muted-foreground);
+  font-weight: 600;
+}
+
+.iot-timeline-mono {
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+
+.iot-timeline-value {
+  white-space: pre-wrap;
+  max-width: 36rem;
+}
+
+.iot-timeline-chart-wrap {
+  min-height: 320px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.iot-timeline-chart-area {
+  min-height: 320px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.iot-timeline-series-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.iot-timeline-series-hint {
+  margin: 0;
+}
+
+.iot-timeline-series-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.75rem, 1fr));
+  gap: 0.35rem;
+  align-items: stretch;
+  max-height: 7.5rem;
+  overflow-y: auto;
+  padding: 0.1rem 0;
+}
+
+.iot-timeline-series-btn {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  justify-content: center;
+}
+
+.iot-timeline-series-btn .iot-timeline-series-name {
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
 .preview-scroll {
   flex: 1;
   min-height: 0;
