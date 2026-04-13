@@ -1,5 +1,5 @@
 {
-  "name": "cgx-debug-tablet-app",
+  "name": "cgx-debug-tablet",
   "version": "1.0.0",
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
@@ -14,12 +14,13 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
+    "icons": "node scripts/generate-app-icon.mjs",
     "postinstall": "electron-builder install-app-deps",
     "stage-env": "node scripts/stage-env.cjs",
-    "build:unpack": "npm run build && npm run stage-env && electron-builder --dir",
-    "build:win": "npm run build && npm run stage-env && electron-builder --win",
-    "build:mac": "npm run build && npm run stage-env && electron-builder --mac",
-    "build:linux": "npm run build && npm run stage-env && electron-builder --linux",
+    "build:unpack": "npm run build && npm run icons && npm run stage-env && electron-builder --dir",
+    "build:win": "npm run build && npm run icons && npm run stage-env && electron-builder --win",
+    "build:mac": "npm run build && npm run icons && npm run stage-env && electron-builder --mac",
+    "build:linux": "npm run build && npm run icons && npm run stage-env && electron-builder --linux",
     "ui:add": "npx shadcn@latest add --yes --overwrite --cwd src/renderer/src"
   },
   "dependencies": {
@@ -60,6 +61,7 @@
     "prettier": "^3.2.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "sharp": "^0.33.5",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.3.3",
     "vite": "^5.0.12"

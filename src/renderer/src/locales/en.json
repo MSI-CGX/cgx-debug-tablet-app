@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Folder reader",
+    "title": "CGX Debug Tablet",
     "navMain": "Main navigation",
     "navExplorer": "Explorer",
     "navSettings": "Settings",
@@ -34,7 +34,16 @@
     "configTreeContextAddExcluded": "Add to hidden paths (Settings)",
     "configTreeContextAlreadyExcluded": "Already hidden",
     "configTreeContextCopyPath": "Copy path",
-    "favoritesAria": "Favorite shortcuts"
+    "favoritesAria": "Favorite shortcuts",
+    "logLevelFilterAria": "Show or hide log lines by level",
+    "logLevelAllHidden": "All log levels are hidden. Turn at least one level on to see lines.",
+    "logLevel": {
+      "error": "error",
+      "warn": "warn",
+      "info": "info",
+      "debug": "debug",
+      "other": "other"
+    }
   },
   "settings": {
     "title": "Settings",

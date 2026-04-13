@@ -7,6 +7,7 @@ import {
   Menu,
   type MenuItemConstructorOptions
 } from 'electron'
+import { existsSync } from 'fs'
 import { readFile, readdir, stat } from 'fs/promises'
 import path from 'path'
 import dotenv from 'dotenv'
@@ -321,6 +322,21 @@ function findGeoJsonLayerIndexByRelativePath(normalizedRel: string): number {
 
 let mapWindow: BrowserWindow | null = null
 
+/**
+ * Same raster as electron-builder app icon (from resources/logo_splash.svg → build/icon.png).
+ * PNG is required for reliable Windows / Linux window icons; SVG alone is often ignored.
+ */
+function getWindowIconPath(): string | undefined {
+  if (app.isPackaged) {
+    const packaged = path.join(process.resourcesPath, 'app-icon.png')
+    return existsSync(packaged) ? packaged : undefined
+  }
+  const fromBuild = path.join(__dirname, '../../build/icon.png')
+  if (existsSync(fromBuild)) return fromBuild
+  const devSvg = path.join(__dirname, '../../resources/logo_splash.svg')
+  return existsSync(devSvg) ? devSvg : undefined
+}
+
 function mapWindowDevUrl(): string {
   const raw = process.env['ELECTRON_RENDERER_URL']?.trim() ?? ''
   if (!raw) return ''
@@ -333,6 +349,7 @@ function createMapWindow(): void {
     mapWindow.focus()
     return
   }
+  const windowIcon = getWindowIconPath()
   mapWindow = new BrowserWindow({
     width: 1000,
     height: 720,
@@ -341,6 +358,7 @@ function createMapWindow(): void {
     show: false,
     title: 'GeoJSON map',
     autoHideMenuBar: true,
+    ...(windowIcon ? { icon: windowIcon } : {}),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -365,6 +383,7 @@ function createMapWindow(): void {
 }
 
 function createWindow(): void {
+  const windowIcon = getWindowIconPath()
   const mainWindow = new BrowserWindow({
     width: 960,
     height: 720,
@@ -372,6 +391,7 @@ function createWindow(): void {
     resizable: false,
     maximizable: false,
     autoHideMenuBar: true,
+    ...(windowIcon ? { icon: windowIcon } : {}),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -396,7 +416,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.electron')
+  electronApp.setAppUserModelId('com.cgx.debugtablet')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

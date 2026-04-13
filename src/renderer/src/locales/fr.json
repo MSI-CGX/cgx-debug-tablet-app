@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Lecteur de dossiers",
+    "title": "CGX Debug Tablet",
     "navMain": "Navigation principale",
     "navExplorer": "Explorateur",
     "navSettings": "Paramètres",
@@ -34,7 +34,16 @@
     "configTreeContextAddExcluded": "Ajouter aux chemins masqués (Paramètres)",
     "configTreeContextAlreadyExcluded": "Déjà masqué",
     "configTreeContextCopyPath": "Copier le chemin",
-    "favoritesAria": "Raccourcis favoris"
+    "favoritesAria": "Raccourcis favoris",
+    "logLevelFilterAria": "Afficher ou masquer les lignes de journal par niveau",
+    "logLevelAllHidden": "Tous les niveaux sont masqués. Activez au moins un niveau pour afficher des lignes.",
+    "logLevel": {
+      "error": "erreur",
+      "warn": "avert.",
+      "info": "info",
+      "debug": "debug",
+      "other": "autres"
+    }
   },
   "settings": {
     "title": "Paramètres",

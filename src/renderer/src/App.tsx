@@ -21,9 +21,20 @@ import {
   normalizeExcludedPathLine,
   parseDottedPath
 } from '../../common/configExcludedPaths'
+import {
+  colorForLogFilterLevel,
+  foregroundOnAccent
+} from '@/lib/logLineColor'
+import {
+  DEFAULT_LOG_LEVEL_VISIBILITY,
+  LOG_LEVEL_ORDER,
+  filterLogContentByLevels,
+  type LogLineLevel
+} from '@/lib/logLineLevel'
 import i18n from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import SettingsView from './SettingsView'
+import logoSplashUrl from '@resources/logo_splash.svg?url'
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`
@@ -115,6 +126,9 @@ export default function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [listLoading, setListLoading] = useState(false)
   const [readLoading, setReadLoading] = useState(false)
+  const [logLevelVisibility, setLogLevelVisibility] = useState<
+    Record<LogLineLevel, boolean>
+  >(() => ({ ...DEFAULT_LOG_LEVEL_VISIBILITY }))
   const selectedPathRef = useRef<string | null>(null)
   const previewScrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -204,6 +218,10 @@ export default function App(): JSX.Element {
     })
     return unsub
   }, [refreshConfigFormExcludedPaths])
+
+  useEffect(() => {
+    setLogLevelVisibility({ ...DEFAULT_LOG_LEVEL_VISIBILITY })
+  }, [selectedEntry?.relativePath])
 
   const addExcludedPathFromTree = useCallback(
     async (dottedPath: string): Promise<void> => {
@@ -494,10 +512,41 @@ export default function App(): JSX.Element {
     selectedEntry.readMode !== 'image' &&
     configJsonPreview?.ok === true
 
+  const isLogFileTextPreview =
+    selectedEntry?.kind === 'file' &&
+    isLogLikeFileName(selectedEntry.name) &&
+    !imagePreviewUrl &&
+    !showConfigFormPreview
+
+  const displayPreviewText = useMemo(() => {
+    if (!isLogFileTextPreview) return content
+    return filterLogContentByLevels(content, logLevelVisibility)
+  }, [content, isLogFileTextPreview, logLevelVisibility])
+
+  const showLogLevelToolbar =
+    selectedEntry?.kind === 'file' &&
+    isLogLikeFileName(selectedEntry.name) &&
+    !readLoading &&
+    !imagePreviewUrl &&
+    !showConfigFormPreview
+
+  const showLogPreviewEmpty =
+    isLogFileTextPreview &&
+    displayPreviewText === '' &&
+    content.length > 0
+
   return (
     <div className="layout">
       <header className="header">
         <div className="header-brand">
+          <img
+            src={logoSplashUrl}
+            alt=""
+            className="header-logo"
+            width={36}
+            height={36}
+            decoding="async"
+          />
           <h1>{t('app.title')}</h1>
         </div>
         <div className="header-center">
@@ -683,7 +732,57 @@ export default function App(): JSX.Element {
             </aside>
 
             <main className="preview">
-              <h2>{t('app.previewTitle')}</h2>
+              <div className="preview-head">
+                <h2>{t('app.previewTitle')}</h2>
+                {showLogLevelToolbar ? (
+                  <div
+                    className="log-level-toggles"
+                    role="group"
+                    aria-label={t('app.logLevelFilterAria')}
+                  >
+                    {LOG_LEVEL_ORDER.map((level) => {
+                      const accent = colorForLogFilterLevel(level, logHighlightRules)
+                      const on = logLevelVisibility[level]
+                      const themed = Boolean(accent)
+                      const style =
+                        themed && accent
+                          ? on
+                            ? {
+                                backgroundColor: accent,
+                                color: foregroundOnAccent(accent),
+                                borderColor: accent
+                              }
+                            : {
+                                backgroundColor: 'transparent',
+                                color: accent,
+                                borderColor: accent
+                              }
+                          : undefined
+                      return (
+                        <Button
+                          key={level}
+                          type="button"
+                          size="sm"
+                          variant={themed ? 'outline' : on ? 'default' : 'outline'}
+                          className={
+                            themed ? 'log-level-toggle log-level-toggle--accent' : 'log-level-toggle'
+                          }
+                          style={style}
+                          aria-pressed={on}
+                          onClick={() =>
+                            setLogLevelVisibility((prev) => ({
+                              ...prev,
+                              [level]: !prev[level]
+                            }))
+                          }
+                        >
+                          {t(`app.logLevel.${level}`)}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </div>
               <div className="preview-scroll" ref={previewScrollRef}>
                 {readLoading && <p className="muted">{t('app.readingFile')}</p>}
                 {selectedEntry && !readLoading && imagePreviewUrl ? (
@@ -735,10 +834,19 @@ export default function App(): JSX.Element {
                 !imagePreviewUrl &&
                 configJsonPreview?.ok === false &&
                 isWorkspaceConfigFile(selectedEntry) ? (
-                  <pre className="content">{content}</pre>
+                  <pre className="content">{displayPreviewText}</pre>
                 ) : null}
-                {selectedEntry && !readLoading && !imagePreviewUrl && useLogHighlight && !showConfigFormPreview ? (
-                  <LogHighlightedPre content={content} rules={logHighlightRules} />
+                {selectedEntry &&
+                !readLoading &&
+                !imagePreviewUrl &&
+                useLogHighlight &&
+                !showConfigFormPreview &&
+                !(configJsonPreview?.ok === false && isWorkspaceConfigFile(selectedEntry)) ? (
+                  showLogPreviewEmpty ? (
+                    <p className="muted log-preview-empty">{t('app.logLevelAllHidden')}</p>
+                  ) : (
+                    <LogHighlightedPre content={displayPreviewText} rules={logHighlightRules} />
+                  )
                 ) : null}
                 {selectedEntry &&
                 !readLoading &&
@@ -746,7 +854,11 @@ export default function App(): JSX.Element {
                 !useLogHighlight &&
                 !showConfigFormPreview &&
                 !(configJsonPreview?.ok === false && isWorkspaceConfigFile(selectedEntry)) ? (
-                  <pre className="content">{content}</pre>
+                  showLogPreviewEmpty ? (
+                    <p className="muted log-preview-empty">{t('app.logLevelAllHidden')}</p>
+                  ) : (
+                    <pre className="content">{displayPreviewText}</pre>
+                  )
                 ) : null}
                 {!selectedEntry && !readLoading && (
                   <p className="muted preview-hint">{t('app.previewHint')}</p>

@@ -1,5 +1,7 @@
-appId: com.electron.app
-productName: electron-app
+appId: com.cgx.debugtablet
+productName: cgx-debug-tablet
+# Rasterized from resources/logo_splash.svg via `npm run icons` (build/icon.png).
+icon: build/icon.png
 directories:
   buildResources: build
 files:
@@ -14,6 +16,8 @@ files:
 extraResources:
   - from: build/staged-env
     to: .
+  - from: build/icon.png
+    to: app-icon.png
 asarUnpack:
   - resources/**
   # LMDB: JS in `lmdb`, native prebuilds live in optional `@lmdb/*` packages — both must be outside asar.
@@ -23,7 +27,7 @@ asarUnpack:
 # Rebuild native deps (e.g. lmdb) for Electron ABI — required for packaged app runtime.
 npmRebuild: true
 win:
-  executableName: electron-app
+  executableName: cgx-debug-tablet
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

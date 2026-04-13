@@ -1,4 +1,4 @@
-<h1 align="center">electron-app</h1>
+<h1 align="center">cgx-debug-tablet</h1>
 
 <p align="center">An Electron application with Vue3 and TypeScript</p>
 
