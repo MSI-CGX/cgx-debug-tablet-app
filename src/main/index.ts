@@ -27,7 +27,8 @@ import {
   type LogHighlightRule
 } from './appStore'
 import { resolveFavoriteFromWorkspaceRel, type FavoriteOpenResult } from './favoriteNavigation'
-import { getIotTimelineBounds, queryIotTimelineRange } from './iotTimelineLmdb'
+import { getLmdbTimelineBounds, queryLmdbTimelineRange } from './lmdbTimeline'
+import { getLmdbRefusalReason, type LmdbRefusalReason } from './lmdbProbe'
 import { sampleLmdbKeys } from './lmdbPreview'
 import { decryptConfEncryptedBuffer } from './decryptConfFile'
 import { fileBindingKey, resolvePreviewReadMode } from './fileBindings'
@@ -100,6 +101,8 @@ const MAIN_I18N: Record<
     geoMapRemoveFromMap: string
     workspaceConfigSet: string
     workspaceConfigClear: string
+    lmdbNotDatabaseJson: string
+    lmdbNotValidLmdbFile: string
   }
 > = {
   en: {
@@ -120,7 +123,11 @@ const MAIN_I18N: Record<
     geoMapAddToMap: 'Add to map',
     geoMapRemoveFromMap: 'Remove from map',
     workspaceConfigSet: 'Set as workspace config file',
-    workspaceConfigClear: 'Unset workspace config file'
+    workspaceConfigClear: 'Unset workspace config file',
+    lmdbNotDatabaseJson:
+      'This file looks like plain JSON/text (e.g. GeoJSON), not an LMDB database. Use the context menu: automatic preview or UTF-8 text.',
+    lmdbNotValidLmdbFile:
+      'This file does not look like a valid LMDB data file (no LMDB metadata). Use automatic preview or text, or pick a real LMDB path.'
   },
   fr: {
     ignoreFolder: 'Ignorer le dossier',
@@ -143,8 +150,21 @@ const MAIN_I18N: Record<
     geoMapAddToMap: 'Ajouter à la carte',
     geoMapRemoveFromMap: 'Retirer de la carte',
     workspaceConfigSet: 'Définir comme fichier de configuration du workspace',
-    workspaceConfigClear: 'Retirer le fichier de configuration du workspace'
+    workspaceConfigClear: 'Retirer le fichier de configuration du workspace',
+    lmdbNotDatabaseJson:
+      'Ce fichier ressemble à du JSON/texte (ex. GeoJSON), pas à une base LMDB. Menu contextuel : aperçu automatique ou texte UTF-8.',
+    lmdbNotValidLmdbFile:
+      'Ce fichier ne ressemble pas à un fichier LMDB valide (métadonnées LMDB absentes). Utilisez l’aperçu automatique ou le texte, ou un vrai chemin LMDB.'
   }
+}
+
+function lmdbRefusalMessage(
+  locale: AppLocale,
+  reason: LmdbRefusalReason
+): string {
+  return reason === 'looks_like_json_text'
+    ? MAIN_I18N[locale].lmdbNotDatabaseJson
+    : MAIN_I18N[locale].lmdbNotValidLmdbFile
 }
 
 function mimeForImagePath(filePath: string): string {
@@ -263,6 +283,10 @@ function applyFileReadMode(
   relativePath: string,
   mode: Exclude<FileReadMode, 'plain'> | 'default'
 ): void {
+  const base = path.basename(relativePath)
+  if (mode === 'lmdb' && /\.geojson$/i.test(base)) {
+    return
+  }
   const key = fileBindingKey(relativePath)
   const current = { ...appStore.get('fileDbBindings', {}) }
   if (mode === 'default') {
@@ -821,6 +845,14 @@ app.whenReady().then(() => {
     } else {
       dbPath = fromEnv
     }
+    const trimmed = dbPath.trim()
+    if (trimmed) {
+      const locale = getAppLocale()
+      const refusal = await getLmdbRefusalReason(path.resolve(trimmed))
+      if (refusal !== null) {
+        return { keys: [] as string[], error: lmdbRefusalMessage(locale, refusal) }
+      }
+    }
     return sampleLmdbKeys(dbPath)
   })
 
@@ -831,23 +863,45 @@ app.whenReady().then(() => {
         return { keys: [] as string[], error: 'Invalid path' }
       }
       const full = assertPathInsideRoot(rootFolderPath, relativePath)
+      const locale = getAppLocale()
+      const refusal = await getLmdbRefusalReason(full)
+      if (refusal !== null) {
+        return { keys: [] as string[], error: lmdbRefusalMessage(locale, refusal) }
+      }
       return sampleLmdbKeys(full)
     }
   )
 
   ipcMain.handle(
-    'lmdb:iotTimelineBounds',
+    'lmdb:timelineBounds',
     async (_, rootFolderPath: string, relativePath: string) => {
       if (typeof rootFolderPath !== 'string' || typeof relativePath !== 'string') {
-        return { minMs: 0, maxMs: 0, entryCount: 0, error: 'Invalid path' }
+        return {
+          minMs: 0,
+          maxMs: 0,
+          entryCount: 0,
+          totalDbEntries: 0,
+          error: 'Invalid path'
+        }
       }
       const full = assertPathInsideRoot(rootFolderPath, relativePath)
-      return getIotTimelineBounds(full)
+      const locale = getAppLocale()
+      const refusal = await getLmdbRefusalReason(full)
+      if (refusal !== null) {
+        return {
+          minMs: 0,
+          maxMs: 0,
+          entryCount: 0,
+          totalDbEntries: 0,
+          error: lmdbRefusalMessage(locale, refusal)
+        }
+      }
+      return getLmdbTimelineBounds(full)
     }
   )
 
   ipcMain.handle(
-    'lmdb:iotTimelineQuery',
+    'lmdb:timelineQuery',
     async (
       _,
       rootFolderPath: string,
@@ -862,7 +916,12 @@ app.whenReady().then(() => {
         return { rows: [], truncated: false, error: 'Invalid range' }
       }
       const full = assertPathInsideRoot(rootFolderPath, relativePath)
-      return queryIotTimelineRange(full, startMs, endMs)
+      const locale = getAppLocale()
+      const refusal = await getLmdbRefusalReason(full)
+      if (refusal !== null) {
+        return { rows: [], truncated: false, error: lmdbRefusalMessage(locale, refusal) }
+      }
+      return queryLmdbTimelineRange(full, startMs, endMs)
     }
   )
 
@@ -1014,6 +1073,7 @@ app.whenReady().then(() => {
         },
         {
           label: MAIN_I18N[locale].entryReadAsLmdb,
+          enabled: !isGeoJsonFile,
           click: (): void => {
             applyFileReadMode(payload.relativePath, 'lmdb')
           }

@@ -113,7 +113,7 @@
     "error": "Error: {{error}}",
     "empty": "No keys (empty path or empty database)."
   },
-  "iotTimeline": {
+  "lmdbTimeline": {
     "loadingBounds": "Reading timeline bounds…",
     "loadingRows": "Loading samples…",
     "rangeLabel": "Time range filter",

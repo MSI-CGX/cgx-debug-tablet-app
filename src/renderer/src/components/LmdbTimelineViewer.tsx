@@ -10,16 +10,16 @@ import {
   XAxis,
   YAxis
 } from 'recharts'
-import type { IotTimelineRow } from '../../../preload/types'
+import type { LmdbTimelineRow } from '../../../preload/types'
 import { Button } from '@/components/ui/button'
 import {
   collectNumericFieldPaths,
   getNumericAtPath,
   seriesDataKey
-} from '@/lib/iotTimelineChartFields'
+} from '@/lib/lmdbTimelineChartFields'
 import {
-  formatIotTimelineRangeLine
-} from '@/lib/iotTimelineStatsFormat'
+  formatLmdbTimelineRangeLine
+} from '@/lib/lmdbTimelineStatsFormat'
 
 type ViewMode = 'table' | 'chart'
 
@@ -68,7 +68,7 @@ export default function IotTimelineViewer({
   const [maxMs, setMaxMs] = useState(0)
   const [rangeStart, setRangeStart] = useState(0)
   const [rangeEnd, setRangeEnd] = useState(0)
-  const [rows, setRows] = useState<IotTimelineRow[]>([])
+  const [rows, setRows] = useState<LmdbTimelineRow[]>([])
   const [queryError, setQueryError] = useState<string | null>(null)
   const [truncated, setTruncated] = useState(false)
   const [loadingBounds, setLoadingBounds] = useState(true)
@@ -83,7 +83,7 @@ export default function IotTimelineViewer({
     setLoadingBounds(true)
     setBoundsError(null)
     void (async () => {
-      const res = await window.api.iotTimelineBounds(rootPath, relativePath)
+      const res = await window.api.lmdbTimelineBounds(rootPath, relativePath)
       if (cancelled) return
       setLoadingBounds(false)
       if (res.error) {
@@ -106,7 +106,7 @@ export default function IotTimelineViewer({
     setLoadingRows(true)
     setQueryError(null)
     try {
-      const res = await window.api.iotTimelineQuery(rootPath, relativePath, rangeStart, rangeEnd)
+      const res = await window.api.lmdbTimelineQuery(rootPath, relativePath, rangeStart, rangeEnd)
       if (res.error) {
         setRows([])
         setQueryError(res.error)
@@ -177,9 +177,9 @@ export default function IotTimelineViewer({
 
   const statsCountLine = useMemo(() => {
     if (totalDbEntries === entriesWithTime) {
-      return t('iotTimeline.statsCountFull', { count: totalDbEntries })
+      return t('lmdbTimeline.statsCountFull', { count: totalDbEntries })
     }
-    return t('iotTimeline.statsCountPartial', {
+    return t('lmdbTimeline.statsCountPartial', {
       total: totalDbEntries,
       timed: entriesWithTime,
       untimed: Math.max(0, totalDbEntries - entriesWithTime)
@@ -187,7 +187,7 @@ export default function IotTimelineViewer({
   }, [t, totalDbEntries, entriesWithTime])
 
   const statsRangeLine = useMemo(
-    () => formatIotTimelineRangeLine(minMs, maxMs, i18n.language, t),
+    () => formatLmdbTimelineRangeLine(minMs, maxMs, i18n.language, t),
     [minMs, maxMs, i18n.language, t]
   )
 
@@ -196,7 +196,7 @@ export default function IotTimelineViewer({
   }, [minMs, maxMs])
 
   if (loadingBounds) {
-    return <p className="muted">{t('iotTimeline.loadingBounds')}</p>
+    return <p className="muted">{t('lmdbTimeline.loadingBounds')}</p>
   }
 
   if (boundsError) {
@@ -204,23 +204,23 @@ export default function IotTimelineViewer({
   }
 
   const dualStyle = {
-    '--iot-start-pct': String(Math.min(startPct, endPct)),
-    '--iot-end-pct': String(Math.max(startPct, endPct))
+    '--lmdb-start-pct': String(Math.min(startPct, endPct)),
+    '--lmdb-end-pct': String(Math.max(startPct, endPct))
   } as React.CSSProperties
 
   return (
-    <div className="iot-timeline-viewer">
-      <div className="iot-timeline-toolbar" role="group" aria-label={t('iotTimeline.rangeLabel')}>
-        <div className="iot-timeline-stats">
-          <div className="iot-timeline-stats-count">{statsCountLine}</div>
-          <div className="iot-timeline-stats-range" title={statsRangeTitle}>
+    <div className="lmdb-timeline-viewer">
+      <div className="lmdb-timeline-toolbar" role="group" aria-label={t('lmdbTimeline.rangeLabel')}>
+        <div className="lmdb-timeline-stats">
+          <div className="lmdb-timeline-stats-count">{statsCountLine}</div>
+          <div className="lmdb-timeline-stats-range" title={statsRangeTitle}>
             {statsRangeLine}
           </div>
         </div>
-        <div className="iot-timeline-range-bar">
-          <div className="iot-timeline-dual-col">
-            <div className="iot-timeline-dual-wrap" style={dualStyle}>
-              <div className="iot-timeline-dual-bg" aria-hidden />
+        <div className="lmdb-timeline-range-bar">
+          <div className="lmdb-timeline-dual-col">
+            <div className="lmdb-timeline-dual-wrap" style={dualStyle}>
+              <div className="lmdb-timeline-dual-bg" aria-hidden />
               <input
                 type="range"
                 min={0}
@@ -228,7 +228,7 @@ export default function IotTimelineViewer({
                 step={0.05}
                 value={startPct}
                 onChange={(e) => onStartSlider(Number(e.target.value))}
-                aria-label={t('iotTimeline.rangeStart')}
+                aria-label={t('lmdbTimeline.rangeStart')}
               />
               <input
                 type="range"
@@ -237,26 +237,26 @@ export default function IotTimelineViewer({
                 step={0.05}
                 value={endPct}
                 onChange={(e) => onEndSlider(Number(e.target.value))}
-                aria-label={t('iotTimeline.rangeEnd')}
+                aria-label={t('lmdbTimeline.rangeEnd')}
               />
             </div>
-            <div className="iot-timeline-dual-times">
+            <div className="lmdb-timeline-dual-times">
               <time dateTime={new Date(rangeStart).toISOString()}>
-                {t('iotTimeline.rangeStart')}: {new Date(rangeStart).toLocaleString()}
+                {t('lmdbTimeline.rangeStart')}: {new Date(rangeStart).toLocaleString()}
               </time>
               <time dateTime={new Date(rangeEnd).toISOString()}>
-                {t('iotTimeline.rangeEnd')}: {new Date(rangeEnd).toLocaleString()}
+                {t('lmdbTimeline.rangeEnd')}: {new Date(rangeEnd).toLocaleString()}
               </time>
             </div>
           </div>
-          <div className="iot-timeline-view-toggle">
+          <div className="lmdb-timeline-view-toggle">
             <Button
               type="button"
               size="sm"
               variant={viewMode === 'table' ? 'default' : 'outline'}
               onClick={() => setViewMode('table')}
             >
-              {t('iotTimeline.viewTable')}
+              {t('lmdbTimeline.viewTable')}
             </Button>
             <Button
               type="button"
@@ -264,7 +264,7 @@ export default function IotTimelineViewer({
               variant={viewMode === 'chart' ? 'default' : 'outline'}
               onClick={() => setViewMode('chart')}
             >
-              {t('iotTimeline.viewChart')}
+              {t('lmdbTimeline.viewChart')}
             </Button>
           </div>
         </div>
@@ -272,18 +272,18 @@ export default function IotTimelineViewer({
 
       {queryError ? <div className="banner error">{queryError}</div> : null}
       {truncated ? (
-        <p className="muted small iot-timeline-trunc">{t('iotTimeline.truncated')}</p>
+        <p className="muted small lmdb-timeline-trunc">{t('lmdbTimeline.truncated')}</p>
       ) : null}
-      {loadingRows ? <p className="muted">{t('iotTimeline.loadingRows')}</p> : null}
+      {loadingRows ? <p className="muted">{t('lmdbTimeline.loadingRows')}</p> : null}
 
       {!loadingRows && viewMode === 'table' ? (
-        <div className="iot-timeline-table-wrap">
-          <table className="iot-timeline-table">
+        <div className="lmdb-timeline-table-wrap">
+          <table className="lmdb-timeline-table">
             <thead>
               <tr>
-                <th>{t('iotTimeline.colTime')}</th>
-                <th>{t('iotTimeline.colKey')}</th>
-                <th>{t('iotTimeline.colValue')}</th>
+                <th>{t('lmdbTimeline.colTime')}</th>
+                <th>{t('lmdbTimeline.colKey')}</th>
+                <th>{t('lmdbTimeline.colValue')}</th>
               </tr>
             </thead>
             <tbody>
@@ -294,8 +294,8 @@ export default function IotTimelineViewer({
                       {new Date(r.timeMs).toLocaleString()}
                     </time>
                   </td>
-                  <td className="iot-timeline-mono">{r.keyStr}</td>
-                  <td className="iot-timeline-mono iot-timeline-value">
+                  <td className="lmdb-timeline-mono">{r.keyStr}</td>
+                  <td className="lmdb-timeline-mono lmdb-timeline-value">
                     {typeof r.value === 'string'
                       ? r.value
                       : JSON.stringify(r.value, null, 2)}
@@ -305,22 +305,22 @@ export default function IotTimelineViewer({
             </tbody>
           </table>
           {rows.length === 0 && !queryError ? (
-            <p className="muted">{t('iotTimeline.emptyRange')}</p>
+            <p className="muted">{t('lmdbTimeline.emptyRange')}</p>
           ) : null}
         </div>
       ) : null}
 
       {!loadingRows && viewMode === 'chart' ? (
-        <div className="iot-timeline-chart-wrap">
+        <div className="lmdb-timeline-chart-wrap">
           {availableSeries.length === 0 ? (
-            <p className="muted">{t('iotTimeline.chartNoNumeric')}</p>
+            <p className="muted">{t('lmdbTimeline.chartNoNumeric')}</p>
           ) : (
             <>
-              <div className="iot-timeline-chart-area">
+              <div className="lmdb-timeline-chart-area">
                 {selectedSeries.length === 0 ? (
-                  <p className="muted">{t('iotTimeline.chartPickSeries')}</p>
+                  <p className="muted">{t('lmdbTimeline.chartPickSeries')}</p>
                 ) : rows.length === 0 ? (
-                  <p className="muted">{t('iotTimeline.emptyRange')}</p>
+                  <p className="muted">{t('lmdbTimeline.emptyRange')}</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={360}>
                     <LineChart
@@ -369,9 +369,9 @@ export default function IotTimelineViewer({
                   </ResponsiveContainer>
                 )}
               </div>
-              <div className="iot-timeline-series-panel">
-                <p className="iot-timeline-series-hint muted small">{t('iotTimeline.chartSeriesHint')}</p>
-                <div className="iot-timeline-series-grid" role="group" aria-label={t('iotTimeline.chartSeriesAria')}>
+              <div className="lmdb-timeline-series-panel">
+                <p className="lmdb-timeline-series-hint muted small">{t('lmdbTimeline.chartSeriesHint')}</p>
+                <div className="lmdb-timeline-series-grid" role="group" aria-label={t('lmdbTimeline.chartSeriesAria')}>
                   {availableSeries.map((path) => {
                     const on = selectedSeries.includes(path)
                     return (
@@ -380,11 +380,11 @@ export default function IotTimelineViewer({
                         type="button"
                         size="sm"
                         variant={on ? 'default' : 'outline'}
-                        className="iot-timeline-series-btn"
+                        className="lmdb-timeline-series-btn"
                         aria-pressed={on}
                         onClick={() => toggleSeries(path)}
                       >
-                        <span className="iot-timeline-series-name">{path}</span>
+                        <span className="lmdb-timeline-series-name">{path}</span>
                       </Button>
                     )
                   })}

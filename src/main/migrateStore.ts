@@ -58,12 +58,22 @@ function migrateFileDbBindings(appStore: Store<AppStoreSchema>): void {
   for (const [k, v] of Object.entries(raw)) {
     if (!k.includes('|')) {
       const norm = k.replace(/\\/g, '/')
+      const base = path.basename(norm).toLowerCase()
+      if (v === 'lmdb' && base.endsWith('.geojson')) {
+        changed = true
+        continue
+      }
       next[norm] = v
       if (norm !== k) changed = true
       continue
     }
     const idx = k.indexOf('|')
     const rel = k.slice(idx + 1).replace(/\\/g, '/')
+    const base = path.basename(rel).toLowerCase()
+    if (v === 'lmdb' && base.endsWith('.geojson')) {
+      changed = true
+      continue
+    }
     next[rel] = v
     changed = true
   }

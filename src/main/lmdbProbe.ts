@@ -1,0 +1,73 @@
+import { open, stat } from 'fs/promises'
+import path from 'node:path'
+
+/** Enough for the first LMDB meta page (typical page size 4–64 KiB; magic is inside page 0). */
+const PROBE_BYTES = 65_536
+
+/** LMDB on-disk meta `mm_magic` (see OpenLDAP `mdb.c`, little-endian). */
+const MDB_MAGIC_LE = 0xbeefc0de
+
+export type LmdbRefusalReason = 'looks_like_json_text' | 'not_lmdb_format'
+
+function bufferLooksLikeJsonText(buf: Buffer): boolean {
+  let s = buf.toString('utf8')
+  if (s.charCodeAt(0) === 0xfeff) {
+    s = s.slice(1)
+  }
+  s = s.trimStart()
+  if (s.length === 0) {
+    return false
+  }
+  const c = s[0]
+  return c === '{' || c === '['
+}
+
+/** True if `buf` contains the LMDB meta magic at any 4-byte-aligned offset. */
+function bufferHasLmdbMetaMagic(buf: Buffer): boolean {
+  const max = buf.length - 4
+  for (let i = 0; i <= max; i += 4) {
+    if (buf.readUInt32LE(i) === MDB_MAGIC_LE) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * If we should not call `lmdb.open()` on this path (avoids native crashes on non-LMDB files).
+ * Directories are allowed (LMDB environment); only regular files are probed.
+ */
+export async function getLmdbRefusalReason(
+  absPath: string
+): Promise<LmdbRefusalReason | null> {
+  const resolved = path.resolve(absPath.trim())
+  let st
+  try {
+    st = await stat(resolved)
+  } catch {
+    return null
+  }
+  if (st.isDirectory()) {
+    return null
+  }
+  if (!st.isFile() || st.size === 0) {
+    return 'not_lmdb_format'
+  }
+
+  const fh = await open(resolved, 'r')
+  try {
+    const len = Math.min(PROBE_BYTES, st.size)
+    const buf = Buffer.alloc(len)
+    const { bytesRead } = await fh.read(buf, 0, len, 0)
+    const slice = buf.subarray(0, bytesRead)
+    if (bufferLooksLikeJsonText(slice)) {
+      return 'looks_like_json_text'
+    }
+    if (!bufferHasLmdbMetaMagic(slice)) {
+      return 'not_lmdb_format'
+    }
+  } finally {
+    await fh.close()
+  }
+  return null
+}

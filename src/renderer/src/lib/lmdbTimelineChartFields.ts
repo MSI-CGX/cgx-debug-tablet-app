@@ -1,5 +1,5 @@
 /**
- * Discover numeric JSON paths (dot notation) for IoT timeline chart series.
+ * Discover numeric JSON paths (dot notation) for LMDB timeline chart series.
  */
 
 const MAX_SAMPLE_ROWS = 500

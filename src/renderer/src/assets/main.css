@@ -576,7 +576,7 @@
   font-size: 0.9rem;
 }
 
-.iot-timeline-viewer {
+.lmdb-timeline-viewer {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -584,14 +584,14 @@
   flex: 1;
 }
 
-.iot-timeline-toolbar {
+.lmdb-timeline-toolbar {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   flex-shrink: 0;
 }
 
-.iot-timeline-stats {
+.lmdb-timeline-stats {
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -599,25 +599,25 @@
   line-height: 1.35;
 }
 
-.iot-timeline-stats-count {
+.lmdb-timeline-stats-count {
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--foreground);
 }
 
-.iot-timeline-stats-range {
+.lmdb-timeline-stats-range {
   font-size: 0.76rem;
   color: var(--muted-foreground);
 }
 
-.iot-timeline-range-bar {
+.lmdb-timeline-range-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.5rem 0.75rem;
 }
 
-.iot-timeline-dual-col {
+.lmdb-timeline-dual-col {
   flex: 1;
   min-width: min(100%, 12rem);
   display: flex;
@@ -625,18 +625,18 @@
   gap: 0.35rem;
 }
 
-.iot-timeline-dual-wrap {
+.lmdb-timeline-dual-wrap {
   position: relative;
   flex: 1;
   min-width: min(100%, 12rem);
   height: 2rem;
   display: flex;
   align-items: center;
-  --iot-start-pct: 0;
-  --iot-end-pct: 100;
+  --lmdb-start-pct: 0;
+  --lmdb-end-pct: 100;
 }
 
-.iot-timeline-dual-bg {
+.lmdb-timeline-dual-bg {
   position: absolute;
   left: 0;
   right: 0;
@@ -648,14 +648,14 @@
   z-index: 0;
   background: linear-gradient(
     to right,
-    var(--border) 0 calc(var(--iot-start-pct) * 1%),
-    color-mix(in oklch, var(--primary) 45%, transparent) calc(var(--iot-start-pct) * 1%)
-      calc(var(--iot-end-pct) * 1%),
-    var(--border) calc(var(--iot-end-pct) * 1%) 100%
+    var(--border) 0 calc(var(--lmdb-start-pct) * 1%),
+    color-mix(in oklch, var(--primary) 45%, transparent) calc(var(--lmdb-start-pct) * 1%)
+      calc(var(--lmdb-end-pct) * 1%),
+    var(--border) calc(var(--lmdb-end-pct) * 1%) 100%
   );
 }
 
-.iot-timeline-dual-wrap input[type='range'] {
+.lmdb-timeline-dual-wrap input[type='range'] {
   position: absolute;
   left: 0;
   width: 100%;
@@ -669,17 +669,17 @@
   z-index: 1;
 }
 
-.iot-timeline-dual-wrap input[type='range']:last-of-type {
+.lmdb-timeline-dual-wrap input[type='range']:last-of-type {
   z-index: 2;
 }
 
-.iot-timeline-dual-wrap input[type='range']::-webkit-slider-runnable-track {
+.lmdb-timeline-dual-wrap input[type='range']::-webkit-slider-runnable-track {
   height: 6px;
   background: transparent;
   border-radius: 3px;
 }
 
-.iot-timeline-dual-wrap input[type='range']::-webkit-slider-thumb {
+.lmdb-timeline-dual-wrap input[type='range']::-webkit-slider-thumb {
   pointer-events: auto;
   -webkit-appearance: none;
   width: 14px;
@@ -692,13 +692,13 @@
   cursor: grab;
 }
 
-.iot-timeline-dual-wrap input[type='range']::-moz-range-track {
+.lmdb-timeline-dual-wrap input[type='range']::-moz-range-track {
   height: 6px;
   background: transparent;
   border-radius: 3px;
 }
 
-.iot-timeline-dual-wrap input[type='range']::-moz-range-thumb {
+.lmdb-timeline-dual-wrap input[type='range']::-moz-range-thumb {
   pointer-events: auto;
   width: 14px;
   height: 14px;
@@ -709,7 +709,7 @@
   cursor: grab;
 }
 
-.iot-timeline-dual-times {
+.lmdb-timeline-dual-times {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -719,11 +719,11 @@
   color: var(--muted-foreground);
 }
 
-.iot-timeline-dual-times time {
+.lmdb-timeline-dual-times time {
   font-variant-numeric: tabular-nums;
 }
 
-.iot-timeline-range-row {
+.lmdb-timeline-range-row {
   display: grid;
   grid-template-columns: minmax(4rem, auto) 1fr minmax(10rem, 14rem);
   gap: 0.5rem;
@@ -731,62 +731,62 @@
 }
 
 @media (max-width: 640px) {
-  .iot-timeline-range-row {
+  .lmdb-timeline-range-row {
     grid-template-columns: 1fr;
   }
 }
 
-.iot-timeline-label {
+.lmdb-timeline-label {
   font-size: 0.75rem;
   color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.iot-timeline-slider {
+.lmdb-timeline-slider {
   width: 100%;
   accent-color: var(--primary);
 }
 
-.iot-timeline-time {
+.lmdb-timeline-time {
   font-size: 0.75rem;
   color: var(--muted-foreground);
   text-align: right;
 }
 
-.iot-timeline-view-toggle {
+.lmdb-timeline-view-toggle {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   flex-shrink: 0;
 }
 
-.iot-timeline-trunc {
+.lmdb-timeline-trunc {
   margin: 0;
 }
 
-.iot-timeline-table-wrap {
+.lmdb-timeline-table-wrap {
   overflow: auto;
   max-height: min(55vh, 28rem);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 
-.iot-timeline-table {
+.lmdb-timeline-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.78rem;
 }
 
-.iot-timeline-table th,
-.iot-timeline-table td {
+.lmdb-timeline-table th,
+.lmdb-timeline-table td {
   padding: 0.4rem 0.5rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
   vertical-align: top;
 }
 
-.iot-timeline-table th {
+.lmdb-timeline-table th {
   position: sticky;
   top: 0;
   background: var(--background);
@@ -795,17 +795,17 @@
   font-weight: 600;
 }
 
-.iot-timeline-mono {
+.lmdb-timeline-mono {
   font-family: ui-monospace, monospace;
   word-break: break-all;
 }
 
-.iot-timeline-value {
+.lmdb-timeline-value {
   white-space: pre-wrap;
   max-width: 36rem;
 }
 
-.iot-timeline-chart-wrap {
+.lmdb-timeline-chart-wrap {
   min-height: 320px;
   width: 100%;
   display: flex;
@@ -813,24 +813,24 @@
   gap: 0.75rem;
 }
 
-.iot-timeline-chart-area {
+.lmdb-timeline-chart-area {
   min-height: 320px;
   width: 100%;
   flex-shrink: 0;
 }
 
-.iot-timeline-series-panel {
+.lmdb-timeline-series-panel {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
-.iot-timeline-series-hint {
+.lmdb-timeline-series-hint {
   margin: 0;
 }
 
-.iot-timeline-series-grid {
+.lmdb-timeline-series-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(8.75rem, 1fr));
   gap: 0.35rem;
@@ -840,14 +840,14 @@
   padding: 0.1rem 0;
 }
 
-.iot-timeline-series-btn {
+.lmdb-timeline-series-btn {
   width: 100%;
   min-width: 0;
   overflow: hidden;
   justify-content: center;
 }
 
-.iot-timeline-series-btn .iot-timeline-series-name {
+.lmdb-timeline-series-btn .lmdb-timeline-series-name {
   font-family: ui-monospace, monospace;
   font-size: 0.72rem;
   display: block;

@@ -26,13 +26,14 @@ export function resolvePreviewReadMode(
   const key = fileBindingKey(relativePath)
   const bound = pathBindings[key]
   if (bound !== undefined) {
+    // Never treat GeoJSON (text/JSON) as LMDB — misconfiguration can crash the native LMDB layer.
+    if (bound === 'lmdb' && /\.geojson$/i.test(fileName)) {
+      return 'plain'
+    }
     return bound
   }
   if (kind === 'directory') {
     return 'plain'
-  }
-  if (/^iot_timeline\.lmdb$/i.test(fileName)) {
-    return 'lmdb'
   }
   const ext = path.extname(fileName).replace(/^\./, '').toLowerCase()
   const merged = mergeExtensionMaps(extensionMap)

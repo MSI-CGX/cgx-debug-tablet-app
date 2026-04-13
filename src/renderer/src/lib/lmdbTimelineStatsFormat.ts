@@ -1,9 +1,9 @@
 import type { TFunction } from 'i18next'
 
 /** Human-readable span between two timestamps (for stats line). */
-export function formatIotTimelineDuration(ms: number, t: TFunction): string {
+export function formatLmdbTimelineDuration(ms: number, t: TFunction): string {
   if (!Number.isFinite(ms) || ms < 0) return '—'
-  if (ms < 1000) return t('iotTimeline.durSubSecond')
+  if (ms < 1000) return t('lmdbTimeline.durSubSecond')
   const sec = Math.floor(ms / 1000)
   const min = Math.floor(sec / 60)
   const hr = Math.floor(min / 60)
@@ -11,28 +11,28 @@ export function formatIotTimelineDuration(ms: number, t: TFunction): string {
   if (day > 0) {
     const hours = hr % 24
     return hours > 0
-      ? t('iotTimeline.durDaysHours', { days: day, hours: hours })
-      : t('iotTimeline.durDays', { days: day })
+      ? t('lmdbTimeline.durDaysHours', { days: day, hours: hours })
+      : t('lmdbTimeline.durDays', { days: day })
   }
   if (hr > 0) {
     const minutes = min % 60
     return minutes > 0
-      ? t('iotTimeline.durHoursMinutes', { hours: hr, minutes: minutes })
-      : t('iotTimeline.durHours', { hours: hr })
+      ? t('lmdbTimeline.durHoursMinutes', { hours: hr, minutes: minutes })
+      : t('lmdbTimeline.durHours', { hours: hr })
   }
   if (min > 0) {
     const seconds = sec % 60
     return seconds > 0
-      ? t('iotTimeline.durMinutesSeconds', { minutes: min, seconds: seconds })
-      : t('iotTimeline.durMinutes', { minutes: min })
+      ? t('lmdbTimeline.durMinutesSeconds', { minutes: min, seconds: seconds })
+      : t('lmdbTimeline.durMinutes', { minutes: min })
   }
-  return t('iotTimeline.durSeconds', { seconds: sec })
+  return t('lmdbTimeline.durSeconds', { seconds: sec })
 }
 
 /**
  * Compact range: same calendar day → one date + time–time; otherwise full start → end.
  */
-export function formatIotTimelineRangeLine(
+export function formatLmdbTimelineRangeLine(
   minMs: number,
   maxMs: number,
   locale: string,
@@ -47,17 +47,17 @@ export function formatIotTimelineRangeLine(
 
   const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' })
   const timeFmt = new Intl.DateTimeFormat(locale, { timeStyle: 'short' })
-  const duration = formatIotTimelineDuration(maxMs - minMs, t)
+  const duration = formatLmdbTimelineDuration(maxMs - minMs, t)
 
   if (sameCalendarDay) {
-    return t('iotTimeline.statsRangeSameDay', {
+    return t('lmdbTimeline.statsRangeSameDay', {
       date: dateFmt.format(min),
       timeStart: timeFmt.format(min),
       timeEnd: timeFmt.format(max),
       duration
     })
   }
-  return t('iotTimeline.statsRangeMultiDay', {
+  return t('lmdbTimeline.statsRangeMultiDay', {
     from: `${dateFmt.format(min)} ${timeFmt.format(min)}`,
     to: `${dateFmt.format(max)} ${timeFmt.format(max)}`,
     duration

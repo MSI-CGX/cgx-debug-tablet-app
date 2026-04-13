@@ -88,10 +88,10 @@ const api: AppAPI = {
   previewLmdb: (overridePath?: string) => ipcRenderer.invoke('lmdb:preview', overridePath),
   previewLmdbAt: (rootPath: string, relativePath: string) =>
     ipcRenderer.invoke('lmdb:previewAt', rootPath, relativePath),
-  iotTimelineBounds: (rootPath: string, relativePath: string) =>
-    ipcRenderer.invoke('lmdb:iotTimelineBounds', rootPath, relativePath),
-  iotTimelineQuery: (rootPath: string, relativePath: string, startMs: number, endMs: number) =>
-    ipcRenderer.invoke('lmdb:iotTimelineQuery', rootPath, relativePath, startMs, endMs),
+  lmdbTimelineBounds: (rootPath: string, relativePath: string) =>
+    ipcRenderer.invoke('lmdb:timelineBounds', rootPath, relativePath),
+  lmdbTimelineQuery: (rootPath: string, relativePath: string, startMs: number, endMs: number) =>
+    ipcRenderer.invoke('lmdb:timelineQuery', rootPath, relativePath, startMs, endMs),
   setLocale: (locale: AppLocale) => ipcRenderer.invoke('config:setLocale', locale),
   subscribeLocaleChanged: (handler: (locale: AppLocale) => void): (() => void) => {
     const channel = 'config:localeChanged'

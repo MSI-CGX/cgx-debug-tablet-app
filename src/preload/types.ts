@@ -86,7 +86,7 @@ export interface LmdbPreviewResult {
   error?: string
 }
 
-export interface IotTimelineBoundsResult {
+export interface LmdbTimelineBoundsResult {
   minMs: number
   maxMs: number
   entryCount: number
@@ -94,14 +94,14 @@ export interface IotTimelineBoundsResult {
   error?: string
 }
 
-export interface IotTimelineRow {
+export interface LmdbTimelineRow {
   timeMs: number
   keyStr: string
   value: unknown
 }
 
-export interface IotTimelineQueryResult {
-  rows: IotTimelineRow[]
+export interface LmdbTimelineQueryResult {
+  rows: LmdbTimelineRow[]
   truncated: boolean
   error?: string
 }
@@ -151,18 +151,18 @@ export interface AppAPI {
   previewLmdb: (overridePath?: string) => Promise<LmdbPreviewResult>
   /** Preview LMDB keys for a path under the opened root folder. */
   previewLmdbAt: (rootPath: string, relativePath: string) => Promise<LmdbPreviewResult>
-  /** Min/max time range for `iot_timeline.lmdb`-style databases. */
-  iotTimelineBounds: (
+  /** Min/max time range for LMDB timeline preview (time inferred from keys/values). */
+  lmdbTimelineBounds: (
     rootPath: string,
     relativePath: string
-  ) => Promise<IotTimelineBoundsResult>
+  ) => Promise<LmdbTimelineBoundsResult>
   /** Rows with decoded values between startMs and endMs (inclusive). */
-  iotTimelineQuery: (
+  lmdbTimelineQuery: (
     rootPath: string,
     relativePath: string,
     startMs: number,
     endMs: number
-  ) => Promise<IotTimelineQueryResult>
+  ) => Promise<LmdbTimelineQueryResult>
   setLocale: (locale: AppLocale) => Promise<void>
   subscribeLocaleChanged: (handler: (locale: AppLocale) => void) => () => void
   openFavorite: (id: string) => Promise<FavoriteOpenResult>

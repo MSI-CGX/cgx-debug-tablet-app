@@ -15,7 +15,7 @@ import type {
   LogHighlightRule
 } from '../../preload/types'
 import JsonConfigTree from '@/components/JsonConfigTree'
-import IotTimelineViewer from '@/components/IotTimelineViewer'
+import LmdbTimelineViewer from '@/components/LmdbTimelineViewer'
 import LogHighlightedPre from '@/components/LogHighlightedPre'
 import {
   isPathExcludedByRules,
@@ -32,7 +32,6 @@ import {
   filterLogContentByLevels,
   type LogLineLevel
 } from '@/lib/logLineLevel'
-import { isIotTimelineLmdbFile } from '@/lib/iotTimelineFile'
 import i18n from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import SettingsView from './SettingsView'
@@ -326,18 +325,7 @@ export default function App(): JSX.Element {
       setImagePreviewUrl(null)
       try {
         if (entry.readMode === 'lmdb') {
-          if (isIotTimelineLmdbFile(entry.name)) {
-            setContent('')
-          } else {
-            const res = await window.api.previewLmdbAt(rootPath, entry.relativePath)
-            if (res.error) {
-              setError(res.error)
-            } else if (res.keys.length === 0) {
-              setContent(t('lmdb.empty'))
-            } else {
-              setContent(res.keys.join('\n'))
-            }
-          }
+          setContent('')
         } else if (entry.kind === 'file' && entry.readMode === 'image') {
           const res = await window.api.readImagePreview(rootPath, entry.relativePath)
           setImagePreviewUrl(`data:${res.mime};base64,${res.dataBase64}`)
@@ -351,7 +339,7 @@ export default function App(): JSX.Element {
         setReadLoading(false)
       }
     },
-    [rootPath, t]
+    [rootPath]
   )
 
   useEffect(() => {
@@ -847,16 +835,15 @@ export default function App(): JSX.Element {
                 !readLoading &&
                 !imagePreviewUrl &&
                 rootPath &&
-                selectedEntry.readMode === 'lmdb' &&
-                isIotTimelineLmdbFile(selectedEntry.name) ? (
-                  <IotTimelineViewer rootPath={rootPath} relativePath={selectedEntry.relativePath} />
+                selectedEntry.readMode === 'lmdb' ? (
+                  <LmdbTimelineViewer rootPath={rootPath} relativePath={selectedEntry.relativePath} />
                 ) : null}
                 {selectedEntry &&
                 !readLoading &&
                 !imagePreviewUrl &&
                 useLogHighlight &&
                 !showConfigFormPreview &&
-                !(selectedEntry.readMode === 'lmdb' && isIotTimelineLmdbFile(selectedEntry.name)) &&
+                selectedEntry.readMode !== 'lmdb' &&
                 !(configJsonPreview?.ok === false && isWorkspaceConfigFile(selectedEntry)) ? (
                   showLogPreviewEmpty ? (
                     <p className="muted log-preview-empty">{t('app.logLevelAllHidden')}</p>
@@ -869,7 +856,7 @@ export default function App(): JSX.Element {
                 !imagePreviewUrl &&
                 !useLogHighlight &&
                 !showConfigFormPreview &&
-                !(selectedEntry.readMode === 'lmdb' && isIotTimelineLmdbFile(selectedEntry.name)) &&
+                selectedEntry.readMode !== 'lmdb' &&
                 !(configJsonPreview?.ok === false && isWorkspaceConfigFile(selectedEntry)) ? (
                   showLogPreviewEmpty ? (
                     <p className="muted log-preview-empty">{t('app.logLevelAllHidden')}</p>

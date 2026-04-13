@@ -4,7 +4,7 @@ import { open } from 'lmdb'
 const MAX_BOUNDS_SCAN = 500_000
 const MAX_QUERY_ROWS = 20_000
 
-export interface IotTimelineBoundsResult {
+export interface LmdbTimelineBoundsResult {
   minMs: number
   maxMs: number
   /** Entries for which a timeline could be inferred (key or value). */
@@ -14,14 +14,14 @@ export interface IotTimelineBoundsResult {
   error?: string
 }
 
-export interface IotTimelineRow {
+export interface LmdbTimelineRow {
   timeMs: number
   keyStr: string
   value: unknown
 }
 
-export interface IotTimelineQueryResult {
-  rows: IotTimelineRow[]
+export interface LmdbTimelineQueryResult {
+  rows: LmdbTimelineRow[]
   truncated: boolean
   error?: string
 }
@@ -39,7 +39,7 @@ function keyToLabel(key: unknown): string {
   }
 }
 
-/** Roughly 1970–2262 in milliseconds (valid for most IoT data). */
+/** Roughly 1970–2262 in milliseconds (valid for typical sensor/log data). */
 function isReasonableUnixMs(ms: number): boolean {
   return Number.isFinite(ms) && ms >= 0 && ms <= 1e13
 }
@@ -168,6 +168,12 @@ export function parseTimelineKeyMs(key: unknown): number | null {
   return null
 }
 
+function inferEntryTimeMsFromDecoded(key: unknown, decoded: unknown): number | null {
+  const pk = parseTimelineKeyMs(key)
+  if (pk !== null) return pk
+  return inferTimeFromDecodedValue(decoded)
+}
+
 function decodeValue(value: unknown): unknown {
   if (value == null) return null
   if (typeof value === 'object' && !Buffer.isBuffer(value) && !(value instanceof Uint8Array)) {
@@ -225,7 +231,7 @@ export function inferTimeFromDecodedValue(decoded: unknown): number | null {
   return null
 }
 
-export async function getIotTimelineBounds(dbPath: string): Promise<IotTimelineBoundsResult> {
+export async function getLmdbTimelineBounds(dbPath: string): Promise<LmdbTimelineBoundsResult> {
   const absPath = path.resolve(dbPath.trim())
   let minMs = Number.POSITIVE_INFINITY
   let maxMs = Number.NEGATIVE_INFINITY
@@ -245,10 +251,7 @@ export async function getIotTimelineBounds(dbPath: string): Promise<IotTimelineB
       for (const { key, value } of db.getRange({})) {
         scanned++
         if (scanned > MAX_BOUNDS_SCAN) break
-        let t = parseTimelineKeyMs(key)
-        if (t === null) {
-          t = inferTimeFromDecodedValue(decodeValue(value))
-        }
+        const t = inferEntryTimeMsFromDecoded(key, decodeValue(value))
         if (t === null) continue
         entryCount++
         if (t < minMs) minMs = t
@@ -274,22 +277,22 @@ export async function getIotTimelineBounds(dbPath: string): Promise<IotTimelineB
       entryCount: 0,
       totalDbEntries,
       error:
-        'No time found in keys or values. Keys: epoch/ISO fragments, binary uint32/uint64, JSON arrays. Values: JSON with timestamp, ts, time, t, at, createdAt, etc. (ms or seconds).'
+        'No time found in keys or values. Keys: epoch/ISO fragments, binary uint32/uint64, JSON arrays. Values: JSON with timestamp, ts, time, t, at, createdAt, etc.'
     }
   }
 
   return { minMs, maxMs, entryCount, totalDbEntries }
 }
 
-export async function queryIotTimelineRange(
+export async function queryLmdbTimelineRange(
   dbPath: string,
   startMs: number,
   endMs: number
-): Promise<IotTimelineQueryResult> {
+): Promise<LmdbTimelineQueryResult> {
   const lo = Math.min(startMs, endMs)
   const hi = Math.max(startMs, endMs)
   const absPath = path.resolve(dbPath.trim())
-  const rows: IotTimelineRow[] = []
+  const rows: LmdbTimelineRow[] = []
   let truncated = false
 
   try {
@@ -297,10 +300,7 @@ export async function queryIotTimelineRange(
     try {
       for (const { key, value } of db.getRange({})) {
         const decoded = decodeValue(value)
-        let timeMs = parseTimelineKeyMs(key)
-        if (timeMs === null) {
-          timeMs = inferTimeFromDecodedValue(decoded)
-        }
+        const timeMs = inferEntryTimeMsFromDecoded(key, decoded)
         if (timeMs === null) continue
         if (timeMs < lo || timeMs > hi) continue
         rows.push({

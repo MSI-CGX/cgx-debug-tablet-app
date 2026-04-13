@@ -113,7 +113,7 @@
     "error": "Erreur : {{error}}",
     "empty": "Aucune clé (chemin vide ou base vide)."
   },
-  "iotTimeline": {
+  "lmdbTimeline": {
     "loadingBounds": "Lecture des bornes temporelles…",
     "loadingRows": "Chargement des échantillons…",
     "rangeLabel": "Filtrer la plage horaire",
