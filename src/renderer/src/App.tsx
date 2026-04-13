@@ -137,13 +137,14 @@ export default function App(): JSX.Element {
   }, [])
 
   useEffect(() => {
-    const setLang = (lng: string): void => {
-      document.documentElement.lang = lng
+    const syncDocumentLangAndTitle = (): void => {
+      document.documentElement.lang = i18n.language
+      document.title = i18n.t('app.title')
     }
-    setLang(i18n.language)
-    i18n.on('languageChanged', setLang)
+    syncDocumentLangAndTitle()
+    i18n.on('languageChanged', syncDocumentLangAndTitle)
     return (): void => {
-      i18n.off('languageChanged', setLang)
+      i18n.off('languageChanged', syncDocumentLangAndTitle)
     }
   }, [])
 

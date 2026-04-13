@@ -15,6 +15,7 @@ async function bootstrap(): Promise<void> {
     await i18n.changeLanguage('en')
     document.documentElement.lang = 'en'
   }
+  document.title = i18n.t('app.title')
 
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <React.StrictMode>
