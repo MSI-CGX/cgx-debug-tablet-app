@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import path from 'path'
 import type Store from 'electron-store'
 import type { AppStoreSchema, FavoriteEntry, FileReadMode } from './appStore'
@@ -8,6 +9,22 @@ import { normalizeStoredRel, toWorkspaceRelative } from './workspacePaths'
  */
 export function runStoreMigrations(appStore: Store<AppStoreSchema>): void {
   migrateFileDbBindings(appStore)
+  migrateLmdbTimelineKeyRules(appStore)
+}
+
+/** Copy legacy single `lmdbPath` + `lmdbTimelineKeyRegex` into the rules list. */
+function migrateLmdbTimelineKeyRules(appStore: Store<AppStoreSchema>): void {
+  const existing = appStore.get('lmdbTimelineKeyRules', [])
+  if (Array.isArray(existing) && existing.length > 0) {
+    return
+  }
+  const legacyPath = appStore.get('lmdbPath', '').trim()
+  const legacyRegex = appStore.get('lmdbTimelineKeyRegex', '').trim()
+  if (legacyPath && legacyRegex) {
+    appStore.set('lmdbTimelineKeyRules', [
+      { id: randomUUID(), lmdbPath: legacyPath, keyRegex: legacyRegex }
+    ])
+  }
 }
 
 /**

@@ -24,7 +24,8 @@ import {
   type FavoriteEntry,
   type FileReadMode,
   type GeoJsonMapLayerEntry,
-  type LogHighlightRule
+  type LogHighlightRule,
+  type LmdbTimelineKeyRule
 } from './appStore'
 import { resolveFavoriteFromWorkspaceRel, type FavoriteOpenResult } from './favoriteNavigation'
 import { getLmdbTimelineBounds, queryLmdbTimelineRange } from './lmdbTimeline'
@@ -201,6 +202,86 @@ function assertPathInsideRoot(root: string, relativePath: string): string {
     throw new Error('Invalid path')
   }
   return full
+}
+
+function pathsEqualResolved(a: string, b: string): boolean {
+  return path.normalize(path.resolve(a)) === path.normalize(path.resolve(b))
+}
+
+/** True when the setting is a single file/folder name (no directory), e.g. `vehicles_paths_db.lmdb`. */
+function isBasenameOnlyLmdbSetting(stored: string): boolean {
+  const t = stored.trim()
+  if (!t) return false
+  return !/[\\/]/.test(t)
+}
+
+/**
+ * Opened LMDB absolute path matches the configured {@link AppStoreSchema.lmdbPath}:
+ * either full path equality, or (when the setting has no `/` or `\\`) same base file name anywhere under the workspace.
+ */
+function lmdbOpenMatchesConfigured(fullOpen: string, storedLmdb: string): boolean {
+  const stored = storedLmdb.trim()
+  if (!stored) return false
+  if (isBasenameOnlyLmdbSetting(stored)) {
+    const want = path.basename(stored)
+    const got = path.basename(fullOpen)
+    return got.localeCompare(want, undefined, { sensitivity: 'base' }) === 0
+  }
+  const fullSettings = path.resolve(resolveStoredLmdbPath(stored))
+  return pathsEqualResolved(fullOpen, fullSettings)
+}
+
+/**
+ * First matching {@link LmdbTimelineKeyRule} for the opened LMDB path; else legacy single pair if present.
+ */
+function getTimelineKeyRegexForOpenPath(
+  rootFolderPath: string,
+  relativePath: string
+): { regexStr?: string; error?: string } {
+  let fullOpen: string
+  try {
+    fullOpen = assertPathInsideRoot(rootFolderPath, relativePath)
+  } catch {
+    return {}
+  }
+  const rules = appStore.get('lmdbTimelineKeyRules', []) as LmdbTimelineKeyRule[]
+  if (Array.isArray(rules)) {
+    for (const rule of rules) {
+      const p = (rule?.lmdbPath ?? '').trim()
+      const rx = (rule?.keyRegex ?? '').trim()
+      if (!p || !rx) continue
+      if (!lmdbOpenMatchesConfigured(fullOpen, p)) continue
+      try {
+        new RegExp(rx)
+      } catch (e) {
+        return {
+          error: `Invalid LMDB key regex for "${p}": ${e instanceof Error ? e.message : String(e)}`
+        }
+      }
+      return { regexStr: rx }
+    }
+  }
+  const legacyRegex = appStore.get('lmdbTimelineKeyRegex', '').trim()
+  const legacyPath = appStore.get('lmdbPath', '').trim()
+  if (legacyRegex && legacyPath && lmdbOpenMatchesConfigured(fullOpen, legacyPath)) {
+    try {
+      new RegExp(legacyRegex)
+    } catch (e) {
+      return {
+        error: `Invalid LMDB timestamp key regex: ${e instanceof Error ? e.message : String(e)}`
+      }
+    }
+    return { regexStr: legacyRegex }
+  }
+  return {}
+}
+
+function notifyLmdbTimelineSettingsChanged(): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('config:lmdbTimelineSettingsChanged')
+    }
+  }
 }
 
 function notifyConfigChanged(): void {
@@ -628,6 +709,16 @@ app.whenReady().then(() => {
       ignoredFolderNames: [...appStore.get('ignoredFolderNames', [])],
       ignoredFileExtensions: [...appStore.get('ignoredFileExtensions', [])],
       lmdbPath: storedLmdb,
+      lmdbTimelineKeyRegex: appStore.get('lmdbTimelineKeyRegex', '').trim(),
+      lmdbTimelineKeyRules: (() => {
+        const raw = appStore.get('lmdbTimelineKeyRules', []) as LmdbTimelineKeyRule[]
+        if (!Array.isArray(raw)) return []
+        return raw.map((r) => ({
+          id: typeof r.id === 'string' ? r.id : '',
+          lmdbPath: typeof r.lmdbPath === 'string' ? r.lmdbPath : '',
+          keyRegex: typeof r.keyRegex === 'string' ? r.keyRegex : ''
+        }))
+      })(),
       locale: getAppLocale(),
       hasStoreKey: Boolean(getStoreKeyFromEnv()),
       extensionPreviewMap: {
@@ -812,14 +903,37 @@ app.whenReady().then(() => {
       const rel = toWorkspaceRelative(wr, t)
       if (rel !== null) {
         appStore.set('lmdbPath', rel)
+        notifyLmdbTimelineSettingsChanged()
         return
       }
     }
     if (wr && t && !path.isAbsolute(t)) {
       appStore.set('lmdbPath', normalizeStoredRel(t))
+      notifyLmdbTimelineSettingsChanged()
       return
     }
     appStore.set('lmdbPath', t)
+    notifyLmdbTimelineSettingsChanged()
+  })
+
+  ipcMain.handle('config:setLmdbTimelineKeyRules', (_, next: unknown) => {
+    if (!Array.isArray(next)) return
+    const out: LmdbTimelineKeyRule[] = []
+    for (const item of next) {
+      if (!item || typeof item !== 'object') continue
+      const o = item as Record<string, unknown>
+      const rawId = typeof o.id === 'string' ? o.id.trim() : ''
+      const lmdbPath = typeof o.lmdbPath === 'string' ? o.lmdbPath.trim() : ''
+      const keyRegex = typeof o.keyRegex === 'string' ? o.keyRegex.trim() : ''
+      if (!lmdbPath || !keyRegex) continue
+      out.push({
+        id: rawId || randomUUID(),
+        lmdbPath,
+        keyRegex
+      })
+    }
+    appStore.set('lmdbTimelineKeyRules', out)
+    notifyLmdbTimelineSettingsChanged()
   })
 
   ipcMain.handle('config:removeIgnoredFolderName', (_, name: string) => {
@@ -839,7 +953,8 @@ app.whenReady().then(() => {
     const fromEnv = process.env['LMDB_PATH']?.trim() ?? ''
     let dbPath = ''
     if (typeof overridePath === 'string' && overridePath.trim()) {
-      dbPath = overridePath.trim()
+      // Same resolution as stored settings: relative paths use the workspace root, not process cwd.
+      dbPath = resolveStoredLmdbPath(overridePath.trim())
     } else if (fromStore) {
       dbPath = resolveStoredLmdbPath(fromStore)
     } else {
@@ -896,7 +1011,17 @@ app.whenReady().then(() => {
           error: lmdbRefusalMessage(locale, refusal)
         }
       }
-      return getLmdbTimelineBounds(full)
+      const keyRx = getTimelineKeyRegexForOpenPath(rootFolderPath, relativePath)
+      if (keyRx.error) {
+        return {
+          minMs: 0,
+          maxMs: 0,
+          entryCount: 0,
+          totalDbEntries: 0,
+          error: keyRx.error
+        }
+      }
+      return getLmdbTimelineBounds(full, keyRx.regexStr)
     }
   )
 
@@ -921,7 +1046,11 @@ app.whenReady().then(() => {
       if (refusal !== null) {
         return { rows: [], truncated: false, error: lmdbRefusalMessage(locale, refusal) }
       }
-      return queryLmdbTimelineRange(full, startMs, endMs)
+      const keyRx = getTimelineKeyRegexForOpenPath(rootFolderPath, relativePath)
+      if (keyRx.error) {
+        return { rows: [], truncated: false, error: keyRx.error }
+      }
+      return queryLmdbTimelineRange(full, startMs, endMs, keyRx.regexStr)
     }
   )
 

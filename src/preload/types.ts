@@ -54,6 +54,13 @@ export interface FolderEntry {
 
 export type AppLocale = 'en' | 'fr'
 
+/** LMDB file pattern → regex for parsing timestamps from keys (timeline). */
+export interface LmdbTimelineKeyRule {
+  id: string
+  lmdbPath: string
+  keyRegex: string
+}
+
 export interface ConfigSnapshot {
   storePath: string
   /** Registered workspace root (set when opening a folder via the explorer). */
@@ -63,6 +70,11 @@ export interface ConfigSnapshot {
   ignoredFileExtensions: string[]
   /** Stored LMDB path (absolute or relative to workspace root). */
   lmdbPath: string
+  /**
+   * @deprecated Prefer {@link lmdbTimelineKeyRules}; kept for older configs.
+   */
+  lmdbTimelineKeyRegex: string
+  lmdbTimelineKeyRules: LmdbTimelineKeyRule[]
   locale: AppLocale
   /** True when STORE_KEY is set in the environment (e.g. `.env`). */
   hasStoreKey: boolean
@@ -140,6 +152,8 @@ export interface AppAPI {
   clearAllIgnoredFolderNames: () => Promise<void>
   setIgnoredFileExtensions: (extensions: string[]) => Promise<void>
   setLmdbPath: (path: string) => Promise<void>
+  /** Replace the full list of LMDB path → key-regex rules (timeline). */
+  setLmdbTimelineKeyRules: (rules: LmdbTimelineKeyRule[]) => Promise<void>
   setExtensionPreviewMap: (map: Record<string, ExtensionPreviewKind>) => Promise<void>
   resetExtensionDefaults: () => Promise<void>
   setLogHighlightRules: (payload: {
@@ -179,4 +193,5 @@ export interface AppAPI {
   subscribeWorkspaceConfigFileChanged: (handler: () => void) => () => void
   setConfigFormExcludedPaths: (paths: string[]) => Promise<void>
   subscribeConfigFormExcludedPathsChanged: (handler: () => void) => () => void
+  subscribeLmdbTimelineSettingsChanged: (handler: () => void) => () => void
 }

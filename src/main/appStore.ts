@@ -1,4 +1,47 @@
+import fs from 'fs'
+import path from 'path'
+import { app } from 'electron'
 import Store from 'electron-store'
+
+/** Matches `productName` in `electron-builder.yml`; avoids dev using `…/Roaming/Electron`. */
+const PINNED_APP_DIR = 'cgx-debug-tablet'
+
+function getPinnedUserDataDir(): string {
+  return path.join(app.getPath('appData'), PINNED_APP_DIR)
+}
+
+/**
+ * Copy legacy config into the pinned folder if missing (wrong folder name or dev `Electron` userData).
+ * Pin `userData` to `%AppData%/cgx-debug-tablet`. Must run before `new Store()`.
+ */
+function migrateLegacyConfigIfNeeded(): void {
+  const pinnedDir = getPinnedUserDataDir()
+  const pinnedConfig = path.join(pinnedDir, 'config.json')
+  if (!fs.existsSync(pinnedConfig)) {
+    const appData = app.getPath('appData')
+    const sources = [
+      path.join(appData, 'cgx-debug-tablet-app', 'config.json'),
+      path.join(appData, 'Electron', 'config.json')
+    ]
+    for (const src of sources) {
+      if (!fs.existsSync(src)) continue
+      try {
+        fs.mkdirSync(pinnedDir, { recursive: true })
+        fs.copyFileSync(src, pinnedConfig)
+        break
+      } catch {
+        /* try next */
+      }
+    }
+  }
+  try {
+    app.setPath('userData', pinnedDir)
+  } catch {
+    /* ignore */
+  }
+}
+
+migrateLegacyConfigIfNeeded()
 
 export type AppLocale = 'en' | 'fr'
 
@@ -51,6 +94,17 @@ export interface GeoJsonMapLayerEntry {
   label: string
 }
 
+/**
+ * Maps an LMDB path pattern to a key-timestamp regex. First matching rule wins (order preserved).
+ * {@link lmdbPath}: basename-only or full path (same rules as the sample-keys field).
+ */
+export interface LmdbTimelineKeyRule {
+  id: string
+  lmdbPath: string
+  /** JavaScript RegExp source; first capture group preferred for epoch / ISO. */
+  keyRegex: string
+}
+
 export const DEFAULT_LOG_HIGHLIGHT_RULES: LogHighlightRule[] = [
   { id: 'log-d1', match: 'FATAL', color: '#ff5555' },
   { id: 'log-d2', match: 'ERROR', color: '#f48771' },
@@ -69,8 +123,16 @@ export interface AppStoreSchema {
   ignoredFolderNames: string[]
   /** File extensions hidden in the sidebar (no leading dot, lowercased). */
   ignoredFileExtensions: string[]
-  /** LMDB path: absolute, or relative to {@link workspaceRoot} when not absolute. */
+  /**
+   * Default LMDB path for “Load sample keys” in Settings (absolute, workspace-relative, or basename-only).
+   */
   lmdbPath: string
+  /**
+   * @deprecated Migrated into {@link lmdbTimelineKeyRules}. Kept so old `config.json` still loads.
+   */
+  lmdbTimelineKeyRegex: string
+  /** Ordered list: which LMDB file/folder → regex for parsing time from keys (timeline). */
+  lmdbTimelineKeyRules: LmdbTimelineKeyRule[]
   /** UI language for renderer and native menus that read from store. */
   locale: AppLocale
   /**
@@ -104,11 +166,14 @@ export interface AppStoreSchema {
 
 export const appStore = new Store<AppStoreSchema>({
   name: 'config',
+  cwd: app.getPath('userData'),
   defaults: {
     workspaceRoot: '',
     ignoredFolderNames: [],
     ignoredFileExtensions: [],
     lmdbPath: '',
+    lmdbTimelineKeyRegex: '',
+    lmdbTimelineKeyRules: [],
     locale: 'en',
     fileDbBindings: {},
     extensionPreviewMap: { ...DEFAULT_EXTENSION_PREVIEW_MAP },

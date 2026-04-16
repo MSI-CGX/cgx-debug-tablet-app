@@ -71,6 +71,77 @@ function isLogLikeFileName(fileName: string): boolean {
   return /\.log\./.test(lower)
 }
 
+/** Parse common log timestamps from a line. */
+function parseLogLineTimestampMs(line: string): number | null {
+  const trimmed = line.trim()
+  if (!trimmed) return null
+
+  // ISO-ish date time (YYYY-MM-DD HH:mm:ss(.sss) with optional TZ).
+  const isoLike = trimmed.match(
+    /\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?\b/
+  )
+  if (isoLike) {
+    const candidate = isoLike[0].replace(',', '.')
+    const d = Date.parse(candidate)
+    if (!Number.isNaN(d)) return d
+  }
+
+  // Bracketed common format: [2026-04-16 10:23:01.123]
+  const bracketed = trimmed.match(
+    /\[(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)\]/
+  )
+  if (bracketed) {
+    const d = Date.parse(bracketed[1].replace(',', '.').replace(' ', 'T'))
+    if (!Number.isNaN(d)) return d
+  }
+
+  // Epoch at line start (seconds or milliseconds).
+  const epochStart = trimmed.match(/^(\d{10}|\d{13})(?!\d)/)
+  if (epochStart) {
+    const raw = Number(epochStart[1])
+    if (Number.isFinite(raw)) {
+      return epochStart[1].length === 10 ? raw * 1000 : raw
+    }
+  }
+  return null
+}
+
+function filterLogContentByTimeRange(
+  content: string,
+  startMs: number | null,
+  endMs: number | null
+): string {
+  if (startMs === null && endMs === null) return content
+  const lo = startMs ?? Number.NEGATIVE_INFINITY
+  const hi = endMs ?? Number.POSITIVE_INFINITY
+  const lines = content.split(/\r?\n/)
+  const out: string[] = []
+  let prevIncluded = false
+  for (const line of lines) {
+    const ts = parseLogLineTimestampMs(line)
+    if (ts !== null) {
+      const keep = ts >= lo && ts <= hi
+      if (keep) out.push(line)
+      prevIncluded = keep
+      continue
+    }
+    // Preserve stacktrace/continuation lines only for matching log records.
+    if (prevIncluded) {
+      out.push(line)
+    }
+  }
+  return out.join('\n')
+}
+
+/** Keep lines whose text contains the query (case-insensitive). Empty query = no filter. */
+function filterLogContentByText(content: string, query: string): string {
+  const q = query.trim()
+  if (!q) return content
+  const lower = q.toLowerCase()
+  const lines = content.split(/\r?\n/)
+  return lines.filter((line) => line.toLowerCase().includes(lower)).join('\n')
+}
+
 function normalizePathForCompare(p: string): string {
   return p.replace(/\\/g, '/')
 }
@@ -130,8 +201,13 @@ export default function App(): JSX.Element {
   const [logLevelVisibility, setLogLevelVisibility] = useState<
     Record<LogLineLevel, boolean>
   >(() => ({ ...DEFAULT_LOG_LEVEL_VISIBILITY }))
+  const [logTimeStartInput, setLogTimeStartInput] = useState('')
+  const [logTimeEndInput, setLogTimeEndInput] = useState('')
+  const [logTextFilter, setLogTextFilter] = useState('')
   const selectedPathRef = useRef<string | null>(null)
   const previewScrollRef = useRef<HTMLDivElement | null>(null)
+  const logTimeStartRef = useRef<HTMLInputElement | null>(null)
+  const logTimeEndRef = useRef<HTMLInputElement | null>(null)
 
   const scrollPreviewToTop = useCallback((): void => {
     previewScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -223,6 +299,9 @@ export default function App(): JSX.Element {
 
   useEffect(() => {
     setLogLevelVisibility({ ...DEFAULT_LOG_LEVEL_VISIBILITY })
+    setLogTimeStartInput('')
+    setLogTimeEndInput('')
+    setLogTextFilter('')
   }, [selectedEntry?.relativePath])
 
   const addExcludedPathFromTree = useCallback(
@@ -515,8 +594,23 @@ export default function App(): JSX.Element {
 
   const displayPreviewText = useMemo(() => {
     if (!isLogFileTextPreview) return content
-    return filterLogContentByLevels(content, logLevelVisibility)
-  }, [content, isLogFileTextPreview, logLevelVisibility])
+    const byLevel = filterLogContentByLevels(content, logLevelVisibility)
+    const startMs = logTimeStartInput ? Date.parse(logTimeStartInput) : NaN
+    const endMs = logTimeEndInput ? Date.parse(logTimeEndInput) : NaN
+    const byTime = filterLogContentByTimeRange(
+      byLevel,
+      Number.isNaN(startMs) ? null : startMs,
+      Number.isNaN(endMs) ? null : endMs
+    )
+    return filterLogContentByText(byTime, logTextFilter)
+  }, [
+    content,
+    isLogFileTextPreview,
+    logLevelVisibility,
+    logTimeStartInput,
+    logTimeEndInput,
+    logTextFilter
+  ])
 
   const showLogLevelToolbar =
     selectedEntry?.kind === 'file' &&
@@ -529,6 +623,15 @@ export default function App(): JSX.Element {
     isLogFileTextPreview &&
     displayPreviewText === '' &&
     content.length > 0
+
+  const openNativeDateTimePicker = (el: HTMLInputElement | null): void => {
+    if (!el) return
+    try {
+      el.showPicker()
+    } catch {
+      el.focus()
+    }
+  }
 
   return (
     <div className="layout">
@@ -730,51 +833,113 @@ export default function App(): JSX.Element {
               <div className="preview-head">
                 <h2>{t('app.previewTitle')}</h2>
                 {showLogLevelToolbar ? (
-                  <div
-                    className="log-level-toggles"
-                    role="group"
-                    aria-label={t('app.logLevelFilterAria')}
-                  >
-                    {LOG_LEVEL_ORDER.map((level) => {
-                      const accent = colorForLogFilterLevel(level, logHighlightRules)
-                      const on = logLevelVisibility[level]
-                      const themed = Boolean(accent)
-                      const style =
-                        themed && accent
-                          ? on
-                            ? {
-                                backgroundColor: accent,
-                                color: foregroundOnAccent(accent),
-                                borderColor: accent
-                              }
-                            : {
-                                backgroundColor: 'transparent',
-                                color: accent,
-                                borderColor: accent
-                              }
-                          : undefined
-                      return (
+                  <div className="log-filters">
+                    <div
+                      className="log-level-toggles"
+                      role="group"
+                      aria-label={t('app.logLevelFilterAria')}
+                    >
+                      {LOG_LEVEL_ORDER.map((level) => {
+                        const accent = colorForLogFilterLevel(level, logHighlightRules)
+                        const on = logLevelVisibility[level]
+                        const themed = Boolean(accent)
+                        const style =
+                          themed && accent
+                            ? on
+                              ? {
+                                  backgroundColor: accent,
+                                  color: foregroundOnAccent(accent),
+                                  borderColor: accent
+                                }
+                              : {
+                                  backgroundColor: 'transparent',
+                                  color: accent,
+                                  borderColor: accent
+                                }
+                            : undefined
+                        return (
+                          <Button
+                            key={level}
+                            type="button"
+                            size="sm"
+                            variant={themed ? 'outline' : on ? 'default' : 'outline'}
+                            className={
+                              themed ? 'log-level-toggle log-level-toggle--accent' : 'log-level-toggle'
+                            }
+                            style={style}
+                            aria-pressed={on}
+                            onClick={() =>
+                              setLogLevelVisibility((prev) => ({
+                                ...prev,
+                                [level]: !prev[level]
+                              }))
+                            }
+                          >
+                            {t(`app.logLevel.${level}`)}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                    <div className="log-time-filter" aria-label={t('app.logTimeFilterAria')}>
+                      <label className="log-time-filter-label">
+                        <span>{t('app.logTimeFrom')}</span>
+                        <input
+                          ref={logTimeStartRef}
+                          type="datetime-local"
+                          className="input log-time-filter-input"
+                          value={logTimeStartInput}
+                          step={1}
+                          onChange={(e) => setLogTimeStartInput(e.target.value)}
+                        />
                         <Button
-                          key={level}
                           type="button"
                           size="sm"
-                          variant={themed ? 'outline' : on ? 'default' : 'outline'}
-                          className={
-                            themed ? 'log-level-toggle log-level-toggle--accent' : 'log-level-toggle'
-                          }
-                          style={style}
-                          aria-pressed={on}
-                          onClick={() =>
-                            setLogLevelVisibility((prev) => ({
-                              ...prev,
-                              [level]: !prev[level]
-                            }))
-                          }
+                          variant="outline"
+                          className="log-time-picker-btn"
+                          title={t('app.logTimeOpenPicker')}
+                          onClick={() => openNativeDateTimePicker(logTimeStartRef.current)}
                         >
-                          {t(`app.logLevel.${level}`)}
+                          {t('app.logTimePickerBtn')}
                         </Button>
-                      )
-                    })}
+                      </label>
+                      <label className="log-time-filter-label">
+                        <span>{t('app.logTimeTo')}</span>
+                        <input
+                          ref={logTimeEndRef}
+                          type="datetime-local"
+                          className="input log-time-filter-input"
+                          value={logTimeEndInput}
+                          step={1}
+                          onChange={(e) => setLogTimeEndInput(e.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="log-time-picker-btn"
+                          title={t('app.logTimeOpenPicker')}
+                          onClick={() => openNativeDateTimePicker(logTimeEndRef.current)}
+                        >
+                          {t('app.logTimePickerBtn')}
+                        </Button>
+                      </label>
+                    </div>
+                    <div className="log-text-filter">
+                      <label className="log-text-filter-label" htmlFor="log-text-filter-input">
+                        {t('app.logTextFilterLabel')}
+                      </label>
+                      <input
+                        id="log-text-filter-input"
+                        type="search"
+                        className="input log-text-filter-input"
+                        value={logTextFilter}
+                        onChange={(e) => setLogTextFilter(e.target.value)}
+                        placeholder={t('app.logTextFilterPlaceholder')}
+                        autoComplete="off"
+                        spellCheck={false}
+                        aria-label={t('app.logTextFilterAria')}
+                      />
+                    </div>
                   </div>
                 ) : null}
               </div>

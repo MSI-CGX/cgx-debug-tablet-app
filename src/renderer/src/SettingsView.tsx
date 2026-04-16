@@ -5,7 +5,8 @@ import type {
   ConfigSnapshot,
   ExtensionPreviewKind,
   GeoJsonMapLayerEntry,
-  LogHighlightRule
+  LogHighlightRule,
+  LmdbTimelineKeyRule
 } from '../../preload/types'
 import { Button } from '@/components/ui/button'
 import i18n from '@/i18n/config'
@@ -19,6 +20,7 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
   const { t } = useTranslation()
   const [config, setConfig] = useState<ConfigSnapshot | null>(null)
   const [lmdbInput, setLmdbInput] = useState('')
+  const [lmdbRuleRows, setLmdbRuleRows] = useState<LmdbTimelineKeyRule[]>([])
   const [lmdbPreview, setLmdbPreview] = useState<string>('')
   const [extRows, setExtRows] = useState<{ ext: string; kind: ExtensionPreviewKind }[]>([])
   const [logRuleRows, setLogRuleRows] = useState<LogHighlightRule[]>([])
@@ -31,6 +33,7 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
     const snap = await window.api.getConfigSnapshot()
     setConfig(snap)
     setLmdbInput(snap.lmdbPath)
+    setLmdbRuleRows((snap.lmdbTimelineKeyRules ?? []).map((r) => ({ ...r })))
     setExtRows(
       Object.entries(snap.extensionPreviewMap)
         .sort(([a], [b]) => a.localeCompare(b))
@@ -124,8 +127,10 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
     await load()
   }
 
-  const handleSaveLmdbPath = async (): Promise<void> => {
+  const handleSaveLmdbSettings = async (): Promise<void> => {
     await window.api.setLmdbPath(lmdbInput)
+    const rules = lmdbRuleRows.filter((r) => r.lmdbPath.trim() !== '' && r.keyRegex.trim() !== '')
+    await window.api.setLmdbTimelineKeyRules(rules)
     await onConfigChanged()
     await load()
   }
@@ -650,13 +655,72 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
             value={lmdbInput}
             onChange={(e) => setLmdbInput(e.target.value)}
           />
-          <Button type="button" variant="outline" size="sm" onClick={handleSaveLmdbPath}>
-            {t('settings.savePath')}
-          </Button>
           <Button type="button" size="sm" onClick={handleLmdbPreview}>
             {t('settings.loadSampleKeys')}
           </Button>
         </div>
+        <p className="muted small settings-lmdb-rules-intro">{t('settings.lmdbRulesIntro')}</p>
+        <ul className="settings-list">
+          {lmdbRuleRows.map((row, index) => (
+            <li key={row.id} className="settings-list-item settings-lmdb-rule-row">
+              <input
+                type="text"
+                className="input settings-lmdb-rule-path"
+                spellCheck={false}
+                autoComplete="off"
+                placeholder={t('settings.lmdbRulePathPlaceholder')}
+                value={row.lmdbPath}
+                onChange={(e) => {
+                  const next = [...lmdbRuleRows]
+                  next[index] = { ...row, lmdbPath: e.target.value }
+                  setLmdbRuleRows(next)
+                }}
+                aria-label={t('settings.lmdbRulePathAria')}
+              />
+              <input
+                type="text"
+                className="input settings-lmdb-rule-regex"
+                spellCheck={false}
+                autoComplete="off"
+                placeholder={t('settings.lmdbRuleRegexPlaceholder')}
+                value={row.keyRegex}
+                onChange={(e) => {
+                  const next = [...lmdbRuleRows]
+                  next[index] = { ...row, keyRegex: e.target.value }
+                  setLmdbRuleRows(next)
+                }}
+                aria-label={t('settings.lmdbRuleRegexAria')}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setLmdbRuleRows(lmdbRuleRows.filter((_, i) => i !== index))}
+              >
+                {t('settings.removeLmdbRule')}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <div className="row settings-lmdb-rule-actions">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setLmdbRuleRows([
+                ...lmdbRuleRows,
+                { id: crypto.randomUUID(), lmdbPath: '', keyRegex: '' }
+              ])
+            }
+          >
+            {t('settings.addLmdbRule')}
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => void handleSaveLmdbSettings()}>
+            {t('settings.saveLmdbSettings')}
+          </Button>
+        </div>
+        <p className="muted small settings-lmdb-regex-hint">{t('settings.lmdbRulesHint')}</p>
         {lmdbPreview ? <pre className="lmdb-preview settings-lmdb-preview">{lmdbPreview}</pre> : null}
       </section>
     </div>

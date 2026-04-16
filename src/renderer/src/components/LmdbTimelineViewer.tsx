@@ -53,15 +53,15 @@ const DEFAULT_SERIES_PREFERENCE = [
   'v'
 ]
 
-type IotTimelineViewerProps = {
+type LmdbTimelineViewerProps = {
   rootPath: string
   relativePath: string
 }
 
-export default function IotTimelineViewer({
+export default function LmdbTimelineViewer({
   rootPath,
   relativePath
-}: IotTimelineViewerProps): JSX.Element {
+}: LmdbTimelineViewerProps): JSX.Element {
   const { t, i18n } = useTranslation()
   const [boundsError, setBoundsError] = useState<string | null>(null)
   const [minMs, setMinMs] = useState(0)
@@ -77,6 +77,14 @@ export default function IotTimelineViewer({
   const [selectedSeries, setSelectedSeries] = useState<string[]>([])
   const [totalDbEntries, setTotalDbEntries] = useState(0)
   const [entriesWithTime, setEntriesWithTime] = useState(0)
+  const [timelineSettingsRev, setTimelineSettingsRev] = useState(0)
+
+  useEffect(() => {
+    const unsub = window.api.subscribeLmdbTimelineSettingsChanged(() => {
+      setTimelineSettingsRev((n) => n + 1)
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -100,7 +108,7 @@ export default function IotTimelineViewer({
     return () => {
       cancelled = true
     }
-  }, [rootPath, relativePath])
+  }, [rootPath, relativePath, timelineSettingsRev])
 
   const fetchRows = useCallback(async (): Promise<void> => {
     setLoadingRows(true)
@@ -154,26 +162,42 @@ export default function IotTimelineViewer({
     })
   }, [rows, selectedSeries])
 
+  /** X-axis matches the selected time window; pad when start === end so Recharts can render. */
+  const chartTimeDomain = useMemo((): [number, number] => {
+    const lo = Math.min(rangeStart, rangeEnd)
+    const hi = Math.max(rangeStart, rangeEnd)
+    if (hi > lo) return [lo, hi]
+    return [lo - 1, hi + 1]
+  }, [rangeStart, rangeEnd])
+
   const toggleSeries = useCallback((path: string): void => {
     setSelectedSeries((prev) =>
       prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]
     )
   }, [])
 
-  const span = Math.max(1, maxMs - minMs)
+  /** True span of timed data in the DB (oldest → newest). */
+  const spanMs = Math.max(0, maxMs - minMs)
+  /** ~8000 steps across the window so the slider maps linearly in time without huge DOM step counts. */
+  const sliderStepMs = useMemo(() => {
+    if (spanMs <= 0) return 1
+    const targetSteps = 8000
+    return Math.max(1, Math.ceil(spanMs / targetSteps))
+  }, [spanMs])
 
   const onStartSlider = (v: number): void => {
-    const next = minMs + (v / 100) * span
+    const next = v
     setRangeStart(Math.min(next, rangeEnd))
   }
 
   const onEndSlider = (v: number): void => {
-    const next = minMs + (v / 100) * span
+    const next = v
     setRangeEnd(Math.max(next, rangeStart))
   }
 
-  const startPct = span > 0 ? ((rangeStart - minMs) / span) * 100 : 0
-  const endPct = span > 0 ? ((rangeEnd - minMs) / span) * 100 : 100
+  const startPct =
+    spanMs > 0 ? ((rangeStart - minMs) / spanMs) * 100 : 50
+  const endPct = spanMs > 0 ? ((rangeEnd - minMs) / spanMs) * 100 : 50
 
   const statsCountLine = useMemo(() => {
     if (totalDbEntries === entriesWithTime) {
@@ -223,19 +247,21 @@ export default function IotTimelineViewer({
               <div className="lmdb-timeline-dual-bg" aria-hidden />
               <input
                 type="range"
-                min={0}
-                max={100}
-                step={0.05}
-                value={startPct}
+                min={minMs}
+                max={maxMs}
+                step={sliderStepMs}
+                value={rangeStart}
+                disabled={spanMs <= 0}
                 onChange={(e) => onStartSlider(Number(e.target.value))}
                 aria-label={t('lmdbTimeline.rangeStart')}
               />
               <input
                 type="range"
-                min={0}
-                max={100}
-                step={0.05}
-                value={endPct}
+                min={minMs}
+                max={maxMs}
+                step={sliderStepMs}
+                value={rangeEnd}
+                disabled={spanMs <= 0}
                 onChange={(e) => onEndSlider(Number(e.target.value))}
                 aria-label={t('lmdbTimeline.rangeEnd')}
               />
@@ -331,7 +357,7 @@ export default function IotTimelineViewer({
                       <XAxis
                         dataKey="t"
                         type="number"
-                        domain={['dataMin', 'dataMax']}
+                        domain={chartTimeDomain}
                         stroke="var(--muted-foreground)"
                         tickFormatter={(ms) =>
                           new Date(ms as number).toLocaleString(undefined, {

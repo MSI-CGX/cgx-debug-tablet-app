@@ -1,8 +1,9 @@
 import path from 'node:path'
 import { open } from 'lmdb'
 
-const MAX_BOUNDS_SCAN = 500_000
 const MAX_QUERY_ROWS = 20_000
+/** Limit key string length for user regex (avoids ReDoS / pathological matches). */
+const MAX_KEY_LABEL_LEN_FOR_REGEX = 16_384
 
 export interface LmdbTimelineBoundsResult {
   minMs: number
@@ -168,7 +169,49 @@ export function parseTimelineKeyMs(key: unknown): number | null {
   return null
 }
 
-function inferEntryTimeMsFromDecoded(key: unknown, decoded: unknown): number | null {
+/**
+ * Parse substring as unix ms: digit runs or ISO date.
+ */
+function parseCaptureAsTimestamp(s: string): number | null {
+  const t = s.trim()
+  if (!t) return null
+  const digits = epochDigitsToMs(t)
+  if (digits !== null) return digits
+  const d = Date.parse(t)
+  if (!Number.isNaN(d) && isReasonableUnixMs(d)) return d
+  return null
+}
+
+/**
+ * Apply user regex to the key label: first capture group if present, else full match.
+ */
+function parseTimeFromKeyWithRegex(label: string, re: RegExp): number | null {
+  const slice =
+    label.length > MAX_KEY_LABEL_LEN_FOR_REGEX
+      ? label.slice(0, MAX_KEY_LABEL_LEN_FOR_REGEX)
+      : label
+  let m: RegExpExecArray | null
+  try {
+    m = re.exec(slice)
+  } catch {
+    return null
+  }
+  if (!m) return null
+  const capture =
+    m.length > 1 && m[1] !== undefined && String(m[1]).length > 0 ? String(m[1]) : m[0]
+  return parseCaptureAsTimestamp(capture)
+}
+
+function inferEntryTimeMsFromDecoded(
+  key: unknown,
+  decoded: unknown,
+  keyRe: RegExp | null
+): number | null {
+  if (keyRe) {
+    const label = keyToLabel(key)
+    const fromRegex = parseTimeFromKeyWithRegex(label, keyRe)
+    if (fromRegex !== null) return fromRegex
+  }
   const pk = parseTimelineKeyMs(key)
   if (pk !== null) return pk
   return inferTimeFromDecodedValue(decoded)
@@ -231,12 +274,34 @@ export function inferTimeFromDecodedValue(decoded: unknown): number | null {
   return null
 }
 
-export async function getLmdbTimelineBounds(dbPath: string): Promise<LmdbTimelineBoundsResult> {
+function compileKeyTimeRegex(source: string | undefined): RegExp | null {
+  const t = source?.trim() ?? ''
+  if (!t) return null
+  return new RegExp(t)
+}
+
+export async function getLmdbTimelineBounds(
+  dbPath: string,
+  keyRegexStr?: string
+): Promise<LmdbTimelineBoundsResult> {
   const absPath = path.resolve(dbPath.trim())
+  let keyRe: RegExp | null = null
+  if (keyRegexStr !== undefined && keyRegexStr.trim() !== '') {
+    try {
+      keyRe = compileKeyTimeRegex(keyRegexStr)
+    } catch (e) {
+      return {
+        minMs: 0,
+        maxMs: 0,
+        entryCount: 0,
+        totalDbEntries: 0,
+        error: e instanceof Error ? e.message : String(e)
+      }
+    }
+  }
   let minMs = Number.POSITIVE_INFINITY
   let maxMs = Number.NEGATIVE_INFINITY
   let entryCount = 0
-  let scanned = 0
 
   let totalDbEntries = 0
 
@@ -248,10 +313,9 @@ export async function getLmdbTimelineBounds(dbPath: string): Promise<LmdbTimelin
       } catch {
         totalDbEntries = 0
       }
+      // Full scan so min/max match the true oldest and newest timed entry in the DB.
       for (const { key, value } of db.getRange({})) {
-        scanned++
-        if (scanned > MAX_BOUNDS_SCAN) break
-        const t = inferEntryTimeMsFromDecoded(key, decodeValue(value))
+        const t = inferEntryTimeMsFromDecoded(key, decodeValue(value), keyRe)
         if (t === null) continue
         entryCount++
         if (t < minMs) minMs = t
@@ -277,7 +341,7 @@ export async function getLmdbTimelineBounds(dbPath: string): Promise<LmdbTimelin
       entryCount: 0,
       totalDbEntries,
       error:
-        'No time found in keys or values. Keys: epoch/ISO fragments, binary uint32/uint64, JSON arrays. Values: JSON with timestamp, ts, time, t, at, createdAt, etc.'
+        'No time found in keys or values. Set a key timestamp regex in Settings (for the configured LMDB path), or rely on built-in key/value heuristics (epoch/ISO in keys, JSON time fields in values).'
     }
   }
 
@@ -287,11 +351,24 @@ export async function getLmdbTimelineBounds(dbPath: string): Promise<LmdbTimelin
 export async function queryLmdbTimelineRange(
   dbPath: string,
   startMs: number,
-  endMs: number
+  endMs: number,
+  keyRegexStr?: string
 ): Promise<LmdbTimelineQueryResult> {
   const lo = Math.min(startMs, endMs)
   const hi = Math.max(startMs, endMs)
   const absPath = path.resolve(dbPath.trim())
+  let keyRe: RegExp | null = null
+  if (keyRegexStr !== undefined && keyRegexStr.trim() !== '') {
+    try {
+      keyRe = compileKeyTimeRegex(keyRegexStr)
+    } catch (e) {
+      return {
+        rows: [],
+        truncated: false,
+        error: e instanceof Error ? e.message : String(e)
+      }
+    }
+  }
   const rows: LmdbTimelineRow[] = []
   let truncated = false
 
@@ -300,7 +377,7 @@ export async function queryLmdbTimelineRange(
     try {
       for (const { key, value } of db.getRange({})) {
         const decoded = decodeValue(value)
-        const timeMs = inferEntryTimeMsFromDecoded(key, decoded)
+        const timeMs = inferEntryTimeMsFromDecoded(key, decoded, keyRe)
         if (timeMs === null) continue
         if (timeMs < lo || timeMs > hi) continue
         rows.push({

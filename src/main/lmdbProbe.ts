@@ -7,6 +7,9 @@ const PROBE_BYTES = 65_536
 /** LMDB on-disk meta `mm_magic` (see OpenLDAP `mdb.c`, little-endian). */
 const MDB_MAGIC_LE = 0xbeefc0de
 
+/** Standard data file inside an LMDB environment directory. */
+const LMDB_DATA_FILE = 'data.mdb'
+
 export type LmdbRefusalReason = 'looks_like_json_text' | 'not_lmdb_format'
 
 function bufferLooksLikeJsonText(buf: Buffer): boolean {
@@ -22,10 +25,10 @@ function bufferLooksLikeJsonText(buf: Buffer): boolean {
   return c === '{' || c === '['
 }
 
-/** True if `buf` contains the LMDB meta magic at any 4-byte-aligned offset. */
+/** True if `buf` contains the LMDB meta magic (scan every byte; meta page offset varies). */
 function bufferHasLmdbMetaMagic(buf: Buffer): boolean {
   const max = buf.length - 4
-  for (let i = 0; i <= max; i += 4) {
+  for (let i = 0; i <= max; i++) {
     if (buf.readUInt32LE(i) === MDB_MAGIC_LE) {
       return true
     }
@@ -33,28 +36,18 @@ function bufferHasLmdbMetaMagic(buf: Buffer): boolean {
   return false
 }
 
-/**
- * If we should not call `lmdb.open()` on this path (avoids native crashes on non-LMDB files).
- * Directories are allowed (LMDB environment); only regular files are probed.
- */
-export async function getLmdbRefusalReason(
-  absPath: string
-): Promise<LmdbRefusalReason | null> {
-  const resolved = path.resolve(absPath.trim())
+async function probeFileHead(absFile: string): Promise<LmdbRefusalReason | null> {
   let st
   try {
-    st = await stat(resolved)
+    st = await stat(absFile)
   } catch {
-    return null
-  }
-  if (st.isDirectory()) {
-    return null
+    return 'not_lmdb_format'
   }
   if (!st.isFile() || st.size === 0) {
     return 'not_lmdb_format'
   }
 
-  const fh = await open(resolved, 'r')
+  const fh = await open(absFile, 'r')
   try {
     const len = Math.min(PROBE_BYTES, st.size)
     const buf = Buffer.alloc(len)
@@ -70,4 +63,29 @@ export async function getLmdbRefusalReason(
     await fh.close()
   }
   return null
+}
+
+/**
+ * If we should not call `lmdb.open()` on this path (avoids native crashes on non-LMDB paths).
+ * Directories must contain a valid `data.mdb` with LMDB magic; files are probed directly.
+ */
+export async function getLmdbRefusalReason(
+  absPath: string
+): Promise<LmdbRefusalReason | null> {
+  const resolved = path.resolve(absPath.trim())
+  let st
+  try {
+    st = await stat(resolved)
+  } catch {
+    return null
+  }
+  if (st.isDirectory()) {
+    const dataMdb = path.join(resolved, LMDB_DATA_FILE)
+    return probeFileHead(dataMdb)
+  }
+  if (!st.isFile() || st.size === 0) {
+    return 'not_lmdb_format'
+  }
+
+  return probeFileHead(resolved)
 }

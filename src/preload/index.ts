@@ -69,6 +69,8 @@ const api: AppAPI = {
   setIgnoredFileExtensions: (extensions: string[]) =>
     ipcRenderer.invoke('config:setIgnoredFileExtensions', extensions),
   setLmdbPath: (p: string) => ipcRenderer.invoke('config:setLmdbPath', p),
+  setLmdbTimelineKeyRules: (rules) =>
+    ipcRenderer.invoke('config:setLmdbTimelineKeyRules', rules),
   setExtensionPreviewMap: (map: Record<string, 'text' | 'image'>) =>
     ipcRenderer.invoke('config:setExtensionPreviewMap', map),
   resetExtensionDefaults: () => ipcRenderer.invoke('config:resetExtensionDefaults'),
@@ -154,6 +156,16 @@ const api: AppAPI = {
     ipcRenderer.invoke('config:setConfigFormExcludedPaths', paths),
   subscribeConfigFormExcludedPathsChanged: (handler: () => void): (() => void) => {
     const channel = 'config:configFormExcludedPathsChanged'
+    const fn = (): void => {
+      handler()
+    }
+    ipcRenderer.on(channel, fn)
+    return (): void => {
+      ipcRenderer.removeListener(channel, fn)
+    }
+  },
+  subscribeLmdbTimelineSettingsChanged: (handler: () => void): (() => void) => {
+    const channel = 'config:lmdbTimelineSettingsChanged'
     const fn = (): void => {
       handler()
     }
