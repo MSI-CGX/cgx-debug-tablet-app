@@ -318,6 +318,32 @@
   max-width: 48rem;
 }
 
+.settings-lmdb-rules-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  margin: 0.35rem 0 0.2rem;
+}
+
+.settings-lmdb-rules-heading-path {
+  flex: 1 1 10rem;
+  min-width: min(100%, 8rem);
+}
+
+.settings-lmdb-rules-heading-regex {
+  flex: 2 1 14rem;
+  min-width: min(100%, 12rem);
+}
+
+.settings-lmdb-rules-heading-actions {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+}
+
 .settings-lmdb-rule-row {
   display: flex;
   flex-wrap: wrap;
@@ -695,6 +721,136 @@
   flex: 1;
 }
 
+.lmdb-timeline-rules-panel {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  background: color-mix(in oklch, var(--card) 92%, transparent);
+}
+
+.lmdb-timeline-rules-title {
+  margin: 0 0 0.35rem;
+  font-weight: 500;
+}
+
+.lmdb-timeline-rules-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.lmdb-timeline-rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+
+.lmdb-timeline-rules-table th {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.2rem 0.4rem 0.35rem 0;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+}
+
+.lmdb-timeline-rules-table td {
+  padding: 0.3rem 0.4rem 0.3rem 0;
+  vertical-align: top;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+}
+
+.lmdb-timeline-rules-table tr:last-child td {
+  border-bottom: none;
+}
+
+.lmdb-timeline-rules-col-flag {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.lmdb-timeline-rules-flag {
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.lmdb-timeline-rules-path {
+  max-width: 14rem;
+  word-break: break-all;
+}
+
+.lmdb-timeline-rules-regex {
+  max-width: 22rem;
+  word-break: break-all;
+}
+
+.lmdb-timeline-rules-row-match td:first-child {
+  font-weight: 500;
+}
+
+.lmdb-timeline-rules-row-active {
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+}
+
+.lmdb-timeline-rules-active-hint {
+  margin: 0.4rem 0 0;
+}
+
+.lmdb-timeline-day-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lmdb-timeline-day-label {
+  margin: 0;
+}
+
+.lmdb-timeline-day-input {
+  width: auto;
+  max-width: 11rem;
+  font-size: 0.85rem;
+}
+
+.lmdb-timeline-day-clear {
+  flex-shrink: 0;
+}
+
+.lmdb-timeline-day-warning {
+  margin: 0;
+}
+
+.lmdb-timeline-cal-trigger {
+  gap: 0.4rem;
+  max-width: min(100%, 18rem);
+  justify-content: flex-start;
+}
+
+.lmdb-timeline-cal-trigger span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lmdb-timeline-popover {
+  padding: 0;
+}
+
+/* react-day-picker: align with app theme */
+.lmdb-day-picker {
+  --rdp-accent-color: var(--primary);
+  --rdp-background-color: var(--card);
+  --rdp-outline: 2px solid var(--ring);
+  margin: 0;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.lmdb-day-picker.rdp-root .rdp-month_caption {
+  font-weight: 600;
+}
+
 .lmdb-timeline-toolbar {
   display: flex;
   flex-direction: column;
@@ -928,6 +1084,20 @@
   min-height: 320px;
   width: 100%;
   flex-shrink: 0;
+}
+
+.lmdb-timeline-chart-zoombar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.lmdb-timeline-chart-brush-hint {
+  margin: 0;
+  flex: 1 1 12rem;
 }
 
 .lmdb-timeline-series-panel {

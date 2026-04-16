@@ -231,13 +231,69 @@ function lmdbOpenMatchesConfigured(fullOpen: string, storedLmdb: string): boolea
   return pathsEqualResolved(fullOpen, fullSettings)
 }
 
+/** Synthetic id for the deprecated `lmdbPath` + `lmdbTimelineKeyRegex` pair in rule listings. */
+const LEGACY_LMDB_TIMELINE_RULE_ID = '__legacy__'
+
+type LmdbTimelineRuleRow = {
+  id: string
+  lmdbPath: string
+  keyRegex: string
+  /** True when this rule's `lmdbPath` pattern matches the opened database. */
+  matchesThisFile: boolean
+  /** True when this rule supplies the regex used for the timeline (first match wins). */
+  appliesToTimeline: boolean
+}
+
+/**
+ * Rows for Settings-style list: every configured rule plus optional legacy pair, with match flags.
+ */
+function buildLmdbTimelineRuleRowsForOpenFile(
+  fullOpen: string,
+  activeRuleId: string | typeof LEGACY_LMDB_TIMELINE_RULE_ID | null
+): LmdbTimelineRuleRow[] {
+  const out: LmdbTimelineRuleRow[] = []
+  const rules = appStore.get('lmdbTimelineKeyRules', []) as LmdbTimelineKeyRule[]
+  if (Array.isArray(rules)) {
+    for (const rule of rules) {
+      if (!rule || typeof rule.id !== 'string') continue
+      const p = (rule.lmdbPath ?? '').trim()
+      const rx = (rule.keyRegex ?? '').trim()
+      const matches = p !== '' && rx !== '' && lmdbOpenMatchesConfigured(fullOpen, p)
+      out.push({
+        id: rule.id,
+        lmdbPath: p || '—',
+        keyRegex: rx || '—',
+        matchesThisFile: matches,
+        appliesToTimeline: activeRuleId !== null && rule.id === activeRuleId
+      })
+    }
+  }
+  const legacyRegex = appStore.get('lmdbTimelineKeyRegex', '').trim()
+  const legacyPath = appStore.get('lmdbPath', '').trim()
+  if (legacyRegex !== '' && legacyPath !== '') {
+    const matches = lmdbOpenMatchesConfigured(fullOpen, legacyPath)
+    out.push({
+      id: LEGACY_LMDB_TIMELINE_RULE_ID,
+      lmdbPath: legacyPath,
+      keyRegex: legacyRegex,
+      matchesThisFile: matches,
+      appliesToTimeline: activeRuleId === LEGACY_LMDB_TIMELINE_RULE_ID
+    })
+  }
+  return out
+}
+
 /**
  * First matching {@link LmdbTimelineKeyRule} for the opened LMDB path; else legacy single pair if present.
  */
 function getTimelineKeyRegexForOpenPath(
   rootFolderPath: string,
   relativePath: string
-): { regexStr?: string; error?: string } {
+): {
+  regexStr?: string
+  error?: string
+  activeRuleId?: string | typeof LEGACY_LMDB_TIMELINE_RULE_ID | null
+} {
   let fullOpen: string
   try {
     fullOpen = assertPathInsideRoot(rootFolderPath, relativePath)
@@ -258,7 +314,7 @@ function getTimelineKeyRegexForOpenPath(
           error: `Invalid LMDB key regex for "${p}": ${e instanceof Error ? e.message : String(e)}`
         }
       }
-      return { regexStr: rx }
+      return { regexStr: rx, activeRuleId: rule.id }
     }
   }
   const legacyRegex = appStore.get('lmdbTimelineKeyRegex', '').trim()
@@ -271,9 +327,9 @@ function getTimelineKeyRegexForOpenPath(
         error: `Invalid LMDB timestamp key regex: ${e instanceof Error ? e.message : String(e)}`
       }
     }
-    return { regexStr: legacyRegex }
+    return { regexStr: legacyRegex, activeRuleId: LEGACY_LMDB_TIMELINE_RULE_ID }
   }
-  return {}
+  return { activeRuleId: null }
 }
 
 function notifyLmdbTimelineSettingsChanged(): void {
@@ -996,10 +1052,25 @@ app.whenReady().then(() => {
           maxMs: 0,
           entryCount: 0,
           totalDbEntries: 0,
-          error: 'Invalid path'
+          error: 'Invalid path',
+          activeKeyRegex: null,
+          timelineRuleRows: []
         }
       }
-      const full = assertPathInsideRoot(rootFolderPath, relativePath)
+      let full: string
+      try {
+        full = assertPathInsideRoot(rootFolderPath, relativePath)
+      } catch {
+        return {
+          minMs: 0,
+          maxMs: 0,
+          entryCount: 0,
+          totalDbEntries: 0,
+          error: 'Invalid path',
+          activeKeyRegex: null,
+          timelineRuleRows: []
+        }
+      }
       const locale = getAppLocale()
       const refusal = await getLmdbRefusalReason(full)
       if (refusal !== null) {
@@ -1008,20 +1079,31 @@ app.whenReady().then(() => {
           maxMs: 0,
           entryCount: 0,
           totalDbEntries: 0,
-          error: lmdbRefusalMessage(locale, refusal)
+          error: lmdbRefusalMessage(locale, refusal),
+          activeKeyRegex: null,
+          timelineRuleRows: buildLmdbTimelineRuleRowsForOpenFile(full, null)
         }
       }
       const keyRx = getTimelineKeyRegexForOpenPath(rootFolderPath, relativePath)
+      const activeForRows = keyRx.error ? null : (keyRx.activeRuleId ?? null)
+      const timelineRuleRows = buildLmdbTimelineRuleRowsForOpenFile(full, activeForRows)
       if (keyRx.error) {
         return {
           minMs: 0,
           maxMs: 0,
           entryCount: 0,
           totalDbEntries: 0,
-          error: keyRx.error
+          error: keyRx.error,
+          activeKeyRegex: null,
+          timelineRuleRows
         }
       }
-      return getLmdbTimelineBounds(full, keyRx.regexStr)
+      const bounds = await getLmdbTimelineBounds(full, keyRx.regexStr)
+      return {
+        ...bounds,
+        activeKeyRegex: keyRx.regexStr ?? null,
+        timelineRuleRows
+      }
     }
   )
 

@@ -98,12 +98,27 @@ export interface LmdbPreviewResult {
   error?: string
 }
 
+/** One row in the LMDB timeline key-regex list (Settings + timeline viewer). */
+export interface LmdbTimelineRuleRow {
+  id: string
+  lmdbPath: string
+  keyRegex: string
+  /** True when this rule's LMDB path pattern matches the opened database file. */
+  matchesThisFile: boolean
+  /** True when this rule's regex is the one applied for the timeline (first match wins). */
+  appliesToTimeline: boolean
+}
+
 export interface LmdbTimelineBoundsResult {
   minMs: number
   maxMs: number
   entryCount: number
   totalDbEntries: number
   error?: string
+  /** Regex used to parse time from keys for this file, if any (else heuristics only). */
+  activeKeyRegex: string | null
+  /** All configured LMDB files → key regex rules, with flags for this open file. */
+  timelineRuleRows: LmdbTimelineRuleRow[]
 }
 
 export interface LmdbTimelineRow {

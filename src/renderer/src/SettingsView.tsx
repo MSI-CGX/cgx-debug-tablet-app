@@ -660,6 +660,11 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
           </Button>
         </div>
         <p className="muted small settings-lmdb-rules-intro">{t('settings.lmdbRulesIntro')}</p>
+        <div className="settings-lmdb-rules-heading" role="row">
+          <span className="settings-lmdb-rules-heading-path">{t('settings.lmdbRulesColumnPath')}</span>
+          <span className="settings-lmdb-rules-heading-regex">{t('settings.lmdbRulesColumnRegex')}</span>
+          <span className="settings-lmdb-rules-heading-actions" aria-hidden />
+        </div>
         <ul className="settings-list">
           {lmdbRuleRows.map((row, index) => (
             <li key={row.id} className="settings-list-item settings-lmdb-rule-row">
