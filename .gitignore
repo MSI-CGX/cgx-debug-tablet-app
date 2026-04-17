@@ -7,3 +7,4 @@ out
 .env.*
 !.env.example
 build/staged-env
+tsconfig.node.tsbuildinfo
