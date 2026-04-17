@@ -1,23 +1,94 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { ChevronDown } from 'lucide-react'
 import type {
-  AppLocale,
   ConfigSnapshot,
   ExtensionPreviewKind,
   GeoJsonMapLayerEntry,
   LogHighlightRule,
   LmdbTimelineKeyRule
 } from '../../preload/types'
+import { normalizeAppLocale, type AppLocale } from '../../common/appLocale'
 import { Button } from '@/components/ui/button'
-import i18n from '@/i18n/config'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionHeader,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion'
 import { normalizeExcludedPathLine } from '../../common/configExcludedPaths'
+import { GEO_MAP_DEFAULT_LAYER_COLORS, normalizeMapColorHex } from '../../common/geoMapColors'
+import {
+  GEO_MAP_CONTROL_POSITIONS,
+  type GeoMapControlPosition,
+  normalizeGeoMapControlPosition
+} from '../../common/geoMapControlPosition'
+import { GEO_MAP_LUCIDE_ICON_IDS, normalizeGeoMapIconId } from '../../common/geoMapIcons'
+import { getGeoMapLucideComponent } from '@/lib/geoMapLucideComponents'
+
+const GEO_TOOLBAR_EDGE_I18N: Record<GeoMapControlPosition, string> = {
+  top: 'settings.geoMapToolbarEdgeTop',
+  bottom: 'settings.geoMapToolbarEdgeBottom',
+  left: 'settings.geoMapToolbarEdgeLeft',
+  right: 'settings.geoMapToolbarEdgeRight'
+}
+
+const LANGUAGE_OPTIONS: { locale: AppLocale; flag: string; labelKey: string }[] = [
+  { locale: 'en', flag: '🇬🇧', labelKey: 'settings.langEn' },
+  { locale: 'fr', flag: '🇫🇷', labelKey: 'settings.langFr' },
+  { locale: 'de', flag: '🇩🇪', labelKey: 'settings.langDe' },
+  { locale: 'pt', flag: '🇵🇹', labelKey: 'settings.langPt' },
+  { locale: 'es', flag: '🇪🇸', labelKey: 'settings.langEs' }
+]
+
+const SETTINGS_ACCORDION_DEFAULT = [
+  'language',
+  'storage',
+  'ignored',
+  'ignoredExt',
+  'extensions',
+  'logs',
+  'geo',
+  'workspaceConfig',
+  'configExcluded',
+  'lmdb'
+] as const
+
+function SettingsAccordionSection({
+  value,
+  title,
+  children
+}: {
+  value: string
+  title: ReactNode
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <AccordionItem value={value}>
+      <AccordionHeader className="m-0 border-0 bg-transparent p-0">
+        <AccordionTrigger type="button" className="settings-accordion-trigger-inner">
+          <span className="min-w-0 flex-1 text-left">{title}</span>
+          <ChevronDown
+            className="settings-accordion-chevron h-4 w-4 shrink-0 opacity-80"
+            aria-hidden
+          />
+        </AccordionTrigger>
+      </AccordionHeader>
+      <AccordionContent>
+        <div className="settings-accordion-panel">{children}</div>
+      </AccordionContent>
+    </AccordionItem>
+  )
+}
 
 type SettingsViewProps = {
   onConfigChanged: () => Promise<void>
 }
 
 export default function SettingsView({ onConfigChanged }: SettingsViewProps): JSX.Element {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [config, setConfig] = useState<ConfigSnapshot | null>(null)
   const [lmdbInput, setLmdbInput] = useState('')
   const [lmdbRuleRows, setLmdbRuleRows] = useState<LmdbTimelineKeyRule[]>([])
@@ -42,7 +113,7 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
     setLogRuleRows(snap.logHighlightRules.map((r) => ({ ...r })))
     setLogForAllText(snap.logHighlightForAllTextFiles)
     setGeoJsonLayers(snap.geoJsonMapLayers ?? [])
-    await i18n.changeLanguage(snap.locale === 'fr' ? 'fr' : 'en')
+    await i18n.changeLanguage(normalizeAppLocale(snap.locale))
   }, [])
 
   useEffect(() => {
@@ -110,6 +181,24 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
     await load()
   }
 
+  const handleGeoLayerMapIcon = async (id: string, mapIcon: string): Promise<void> => {
+    await window.api.setGeoJsonMapLayerIcon(id, mapIcon)
+    await onConfigChanged()
+    await load()
+  }
+
+  const handleGeoLayerMapColor = async (id: string, mapColor: string | null): Promise<void> => {
+    await window.api.setGeoJsonMapLayerColor(id, mapColor)
+    await onConfigChanged()
+    await load()
+  }
+
+  const handleGeoMapToolbarPosition = async (position: GeoMapControlPosition): Promise<void> => {
+    await window.api.setGeoJsonMapToolbarPosition(position)
+    await onConfigChanged()
+    await load()
+  }
+
   const handleRemoveOne = async (name: string): Promise<void> => {
     await window.api.removeIgnoredFolderName(name)
     await onConfigChanged()
@@ -152,6 +241,7 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
   const handleLanguage = async (locale: AppLocale): Promise<void> => {
     await window.api.setLocale(locale)
     await i18n.changeLanguage(locale)
+    await load()
   }
 
   const handleSaveExtensions = async (): Promise<void> => {
@@ -190,7 +280,8 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
     await load()
   }
 
-  const currentLocale: AppLocale = config?.locale === 'fr' ? 'fr' : 'en'
+  /** Use i18n so the active flag updates immediately; config can lag until load() completes. */
+  const currentLocale: AppLocale = normalizeAppLocale(i18n.language)
 
   const ignored = config?.ignoredFolderNames ?? []
   const ignoredExts = config?.ignoredFileExtensions ?? []
@@ -262,58 +353,69 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
         <Trans i18nKey="settings.lead" components={{ bold: <strong /> }} />
       </p>
 
-      <section className="settings-section">
-        <h3>{t('settings.languageTitle')}</h3>
-        <div className="row language-row">
-          <Button
-            type="button"
-            variant={currentLocale === 'en' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleLanguage('en')}
+      <Accordion
+        type="multiple"
+        className="settings-accordion"
+        defaultValue={[...SETTINGS_ACCORDION_DEFAULT]}
+      >
+        <SettingsAccordionSection value="language" title={t('settings.languageTitle')}>
+          <div
+            className="settings-lang-flags"
+            role="group"
+            aria-label={t('settings.languageTitle')}
           >
-            {t('settings.langEn')}
-          </Button>
-          <Button
-            type="button"
-            variant={currentLocale === 'fr' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleLanguage('fr')}
-          >
-            {t('settings.langFr')}
-          </Button>
-        </div>
-      </section>
+            {LANGUAGE_OPTIONS.map(({ locale, flag, labelKey }) => (
+              <Button
+                key={locale}
+                type="button"
+                variant={currentLocale === locale ? 'default' : 'outline'}
+                size="sm"
+                className="settings-lang-flag-btn"
+                onClick={() => void handleLanguage(locale)}
+                aria-label={t(labelKey)}
+                title={t(labelKey)}
+              >
+                <span className="settings-lang-flag-emoji" aria-hidden>
+                  {flag}
+                </span>
+              </Button>
+            ))}
+          </div>
+        </SettingsAccordionSection>
 
-      {config && (
-        <>
-          {config.workspaceRoot ? (
-            <p className="muted small settings-workspace-path" title={config.workspaceRoot}>
-              {t('settings.workspaceRootLabel')}{' '}
-              <code className="settings-workspace-code">{config.workspaceRoot}</code>
-            </p>
-          ) : null}
-          <p className="config-path settings-store-path" title={config.storePath}>
-            {t('settings.storeFile')} {config.storePath}
-          </p>
-          <p className="muted small settings-store-key-hint">
-            {t('settings.storeKeyHint')}{' '}
-            <strong>
-              {config.hasStoreKey ? t('settings.storeKeyOk') : t('settings.storeKeyMissing')}
-            </strong>
-          </p>
-        </>
-      )}
-
-      <section className="settings-section">
-        <div className="settings-section-head">
-          <h3>{t('settings.ignoredTitle')}</h3>
-          {ignored.length > 0 && (
-            <Button type="button" variant="destructive" size="sm" onClick={handleClearAll}>
-              {t('settings.restoreAll')}
-            </Button>
+        <SettingsAccordionSection value="storage" title={t('settings.accordionStorageTitle')}>
+          {config ? (
+            <>
+              {config.workspaceRoot ? (
+                <p className="muted small settings-workspace-path" title={config.workspaceRoot}>
+                  {t('settings.workspaceRootLabel')}{' '}
+                  <code className="settings-workspace-code">{config.workspaceRoot}</code>
+                </p>
+              ) : null}
+              <p className="config-path settings-store-path" title={config.storePath}>
+                {t('settings.storeFile')} {config.storePath}
+              </p>
+              <p className="muted small settings-store-key-hint">
+                {t('settings.storeKeyHint')}{' '}
+                <strong>
+                  {config.hasStoreKey ? t('settings.storeKeyOk') : t('settings.storeKeyMissing')}
+                </strong>
+              </p>
+            </>
+          ) : (
+            <p className="muted">{t('app.loading')}</p>
           )}
-        </div>
-        <p className="muted small">{t('settings.ignoredHint')}</p>
+        </SettingsAccordionSection>
+
+        <SettingsAccordionSection value="ignored" title={t('settings.ignoredTitle')}>
+          {ignored.length > 0 ? (
+            <div className="settings-accordion-content-toolbar">
+              <Button type="button" variant="destructive" size="sm" onClick={handleClearAll}>
+                {t('settings.restoreAll')}
+              </Button>
+            </div>
+          ) : null}
+          <p className="muted small">{t('settings.ignoredHint')}</p>
         <ul className="settings-list">
           {ignored.map((name) => (
             <li key={name} className="settings-list-item">
@@ -330,18 +432,22 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
           ))}
         </ul>
         {ignored.length === 0 && <p className="muted">{t('settings.ignoredEmpty')}</p>}
-      </section>
+        </SettingsAccordionSection>
 
-      <section className="settings-section">
-        <div className="settings-section-head">
-          <h3>{t('settings.ignoredExtTitle')}</h3>
-          {ignoredExts.length > 0 && (
-            <Button type="button" variant="destructive" size="sm" onClick={handleClearAllIgnoredExts}>
-              {t('settings.clearAllIgnoredExt')}
-            </Button>
-          )}
-        </div>
-        <p className="muted small">{t('settings.ignoredExtHint')}</p>
+        <SettingsAccordionSection value="ignoredExt" title={t('settings.ignoredExtTitle')}>
+          {ignoredExts.length > 0 ? (
+            <div className="settings-accordion-content-toolbar">
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleClearAllIgnoredExts}
+              >
+                {t('settings.clearAllIgnoredExt')}
+              </Button>
+            </div>
+          ) : null}
+          <p className="muted small">{t('settings.ignoredExtHint')}</p>
         <div className="row settings-ignored-ext-add">
           <input
             type="text"
@@ -377,21 +483,20 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
           ))}
         </ul>
         {ignoredExts.length === 0 && <p className="muted">{t('settings.ignoredExtEmpty')}</p>}
-      </section>
+        </SettingsAccordionSection>
 
-      <section className="settings-section">
-        <div className="settings-section-head">
-          <h3>{t('settings.extensionTitle')}</h3>
-          <div className="row settings-ext-head-actions">
-            <Button type="button" variant="outline" size="sm" onClick={handleResetExtensions}>
-              {t('settings.resetExtensions')}
-            </Button>
-            <Button type="button" size="sm" onClick={handleSaveExtensions}>
-              {t('settings.saveExtensions')}
-            </Button>
+        <SettingsAccordionSection value="extensions" title={t('settings.extensionTitle')}>
+          <div className="settings-accordion-content-toolbar settings-accordion-content-toolbar--split">
+            <div className="row settings-ext-head-actions">
+              <Button type="button" variant="outline" size="sm" onClick={handleResetExtensions}>
+                {t('settings.resetExtensions')}
+              </Button>
+              <Button type="button" size="sm" onClick={handleSaveExtensions}>
+                {t('settings.saveExtensions')}
+              </Button>
+            </div>
           </div>
-        </div>
-        <p className="muted small">{t('settings.extensionHint')}</p>
+          <p className="muted small">{t('settings.extensionHint')}</p>
         <ul className="settings-list settings-ext-list">
           {extRows.map((row, index) => (
             <li key={`${index}:${row.ext}`} className="settings-list-item settings-ext-row">
@@ -441,21 +546,20 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
         >
           {t('settings.addExtension')}
         </Button>
-      </section>
+        </SettingsAccordionSection>
 
-      <section className="settings-section">
-        <div className="settings-section-head">
-          <h3>{t('settings.logsTitle')}</h3>
-          <div className="row settings-ext-head-actions">
-            <Button type="button" variant="outline" size="sm" onClick={handleResetLogRules}>
-              {t('settings.resetLogRules')}
-            </Button>
-            <Button type="button" size="sm" onClick={handleSaveLogRules}>
-              {t('settings.saveLogRules')}
-            </Button>
+        <SettingsAccordionSection value="logs" title={t('settings.logsTitle')}>
+          <div className="settings-accordion-content-toolbar settings-accordion-content-toolbar--split">
+            <div className="row settings-ext-head-actions">
+              <Button type="button" variant="outline" size="sm" onClick={handleResetLogRules}>
+                {t('settings.resetLogRules')}
+              </Button>
+              <Button type="button" size="sm" onClick={handleSaveLogRules}>
+                {t('settings.saveLogRules')}
+              </Button>
+            </div>
           </div>
-        </div>
-        <p className="muted small">{t('settings.logsHint')}</p>
+          <p className="muted small">{t('settings.logsHint')}</p>
         <label className="settings-checkbox-row">
           <input
             type="checkbox"
@@ -525,41 +629,108 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
         >
           {t('settings.addLogRule')}
         </Button>
-      </section>
+        </SettingsAccordionSection>
 
-      <section className="settings-section">
-        <div className="settings-section-head">
-          <h3>{t('settings.geoMapTitle')}</h3>
-          <Button type="button" size="sm" onClick={() => window.api.openMapWindow()}>
-            {t('settings.openMapWindow')}
-          </Button>
-        </div>
-        <p className="muted small">{t('settings.geoMapHint')}</p>
-        <ul className="settings-list">
-          {geoJsonLayers.map((layer) => (
-            <li key={layer.id} className="settings-list-item">
-              <span className="settings-geo-path" title={layer.relativePath}>
-                <span className="tag">{layer.label}</span>
-                <code className="settings-geo-rel">{layer.relativePath}</code>
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void handleRemoveGeoLayer(layer.id)}
+        <SettingsAccordionSection value="geo" title={t('settings.geoMapTitle')}>
+          <div className="settings-accordion-content-toolbar settings-accordion-content-toolbar--split">
+            <div className="settings-geo-toolbar-global">
+              <label className="settings-geo-toolbar-pos-label muted small" htmlFor="geo-map-toolbar-edge">
+                {t('settings.geoMapToolbarPosition')}
+              </label>
+              <select
+                id="geo-map-toolbar-edge"
+                className="input settings-geo-toolbar-pos-select"
+                value={normalizeGeoMapControlPosition(config?.geoJsonMapToolbarPosition)}
+                onChange={(e) =>
+                  void handleGeoMapToolbarPosition(e.target.value as GeoMapControlPosition)
+                }
+                aria-label={t('settings.geoMapToolbarPosition')}
               >
-                {t('settings.removeGeoLayer')}
-              </Button>
-            </li>
-          ))}
+                {GEO_MAP_CONTROL_POSITIONS.map((p) => (
+                  <option key={p} value={p}>
+                    {t(GEO_TOOLBAR_EDGE_I18N[p])}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button type="button" size="sm" onClick={() => window.api.openMapWindow()}>
+              {t('settings.openMapWindow')}
+            </Button>
+          </div>
+          <p className="muted small">{t('settings.geoMapHint')}</p>
+        <p className="muted small">{t('settings.geoMapColorHint')}</p>
+        <ul className="settings-list">
+          {geoJsonLayers.map((layer, layerIndex) => {
+            const iconId = normalizeGeoMapIconId(layer.mapIcon)
+            const MapIcon = getGeoMapLucideComponent(iconId)
+            const resolvedColor =
+              normalizeMapColorHex(layer.mapColor) ??
+              GEO_MAP_DEFAULT_LAYER_COLORS[layerIndex % GEO_MAP_DEFAULT_LAYER_COLORS.length]!
+            return (
+              <li key={layer.id} className="settings-list-item settings-geo-layer-row">
+                <span className="settings-geo-path" title={layer.relativePath}>
+                  <span className="tag">{layer.label}</span>
+                  <code className="settings-geo-rel">{layer.relativePath}</code>
+                </span>
+                <div className="settings-geo-map-controls">
+                  <span
+                    className="settings-geo-icon-disk"
+                    style={{ background: resolvedColor }}
+                    title={t('settings.geoMapColorLabel')}
+                  >
+                    <MapIcon size={20} strokeWidth={2} className="settings-geo-icon-disk-svg" />
+                  </span>
+                  <select
+                    className="input settings-geo-icon-select"
+                    aria-label={t('settings.geoMapIconLabel')}
+                    value={iconId}
+                    onChange={(e) => void handleGeoLayerMapIcon(layer.id, e.target.value)}
+                  >
+                    {GEO_MAP_LUCIDE_ICON_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {id}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="settings-geo-color-field">
+                    <input
+                      type="color"
+                      className="settings-geo-color-input"
+                      value={resolvedColor}
+                      onChange={(e) => void handleGeoLayerMapColor(layer.id, e.target.value)}
+                      title={t('settings.geoMapColorLabel')}
+                      aria-label={t('settings.geoMapColorLabel')}
+                    />
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="settings-geo-color-reset"
+                    onClick={() => void handleGeoLayerMapColor(layer.id, null)}
+                    disabled={normalizeMapColorHex(layer.mapColor) === undefined}
+                  >
+                    {t('settings.geoMapColorReset')}
+                  </Button>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleRemoveGeoLayer(layer.id)}
+                >
+                  {t('settings.removeGeoLayer')}
+                </Button>
+              </li>
+            )
+          })}
         </ul>
         {geoJsonLayers.length === 0 ? (
           <p className="muted">{t('settings.geoMapEmpty')}</p>
         ) : null}
-      </section>
+        </SettingsAccordionSection>
 
-      <section className="settings-section">
-        <h3>{t('settings.workspaceConfigTitle')}</h3>
+        <SettingsAccordionSection value="workspaceConfig" title={t('settings.workspaceConfigTitle')}>
         <p className="muted small">{t('settings.workspaceConfigHint')}</p>
         {config?.workspaceConfigFileRelativePath ? (
           <div className="settings-list-item settings-workspace-config-row">
@@ -578,23 +749,22 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
         ) : (
           <p className="muted">{t('settings.workspaceConfigEmpty')}</p>
         )}
-      </section>
+        </SettingsAccordionSection>
 
-      <section className="settings-section">
-        <div className="settings-section-head">
-          <h3>{t('settings.configFormExcludedTitle')}</h3>
-          {configFormExcludedPaths.length > 0 && (
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => void handleClearAllConfigFormExcluded()}
-            >
-              {t('settings.clearAllConfigFormExcluded')}
-            </Button>
-          )}
-        </div>
-        <p className="muted small">{t('settings.configFormExcludedHint')}</p>
+        <SettingsAccordionSection value="configExcluded" title={t('settings.configFormExcludedTitle')}>
+          {configFormExcludedPaths.length > 0 ? (
+            <div className="settings-accordion-content-toolbar">
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => void handleClearAllConfigFormExcluded()}
+              >
+                {t('settings.clearAllConfigFormExcluded')}
+              </Button>
+            </div>
+          ) : null}
+          <p className="muted small">{t('settings.configFormExcludedHint')}</p>
         <div className="row settings-ignored-ext-add">
           <input
             type="text"
@@ -642,10 +812,9 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
         {configFormExcludedPaths.length === 0 ? (
           <p className="muted">{t('settings.configFormExcludedEmpty')}</p>
         ) : null}
-      </section>
+        </SettingsAccordionSection>
 
-      <section className="settings-section">
-        <h3>{t('settings.lmdbTitle')}</h3>
+        <SettingsAccordionSection value="lmdb" title={t('settings.lmdbTitle')}>
         <p className="muted small">{t('settings.lmdbHint')}</p>
         <div className="row">
           <input
@@ -727,7 +896,8 @@ export default function SettingsView({ onConfigChanged }: SettingsViewProps): JS
         </div>
         <p className="muted small settings-lmdb-regex-hint">{t('settings.lmdbRulesHint')}</p>
         {lmdbPreview ? <pre className="lmdb-preview settings-lmdb-preview">{lmdbPreview}</pre> : null}
-      </section>
+        </SettingsAccordionSection>
+      </Accordion>
     </div>
   )
 }
