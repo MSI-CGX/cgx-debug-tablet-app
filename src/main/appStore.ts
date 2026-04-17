@@ -2,6 +2,11 @@ import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import Store from 'electron-store'
+import type { AppLocale } from '../common/appLocale'
+import type { GeoMapControlPosition } from '../common/geoMapControlPosition'
+import { DEFAULT_GEO_MAP_CONTROL_POSITION } from '../common/geoMapControlPosition'
+
+export type { AppLocale } from '../common/appLocale'
 
 /** Matches `productName` in `electron-builder.yml`; avoids dev using `…/Roaming/Electron`. */
 const PINNED_APP_DIR = 'cgx-debug-tablet'
@@ -42,8 +47,6 @@ function migrateLegacyConfigIfNeeded(): void {
 }
 
 migrateLegacyConfigIfNeeded()
-
-export type AppLocale = 'en' | 'fr'
 
 /**
  * Preview mode for files/folders. `plain` is only resolved (never stored);
@@ -92,6 +95,10 @@ export interface GeoJsonMapLayerEntry {
   id: string
   relativePath: string
   label: string
+  /** Lucide icon name for point markers (see `common/geoMapIcons.ts`). */
+  mapIcon?: string
+  /** `#rrggbb` for point marker disk and polygon fill/stroke; lines ignore this (per-feature random). */
+  mapColor?: string
 }
 
 /**
@@ -153,6 +160,10 @@ export interface AppStoreSchema {
   /** GeoJSON layers shown on the map window (paths relative to workspace root). */
   geoJsonMapLayers: GeoJsonMapLayerEntry[]
   /**
+   * Map window: edge where the layer toolbar (all layer chips) is docked — one setting for all layers.
+   */
+  geoJsonMapToolbarPosition: GeoMapControlPosition
+  /**
    * Optional single workspace config file (JSON), path relative to workspace root.
    * Shown in the preview as a structured form; only one file can be designated.
    */
@@ -181,6 +192,7 @@ export const appStore = new Store<AppStoreSchema>({
     logHighlightRules: [...DEFAULT_LOG_HIGHLIGHT_RULES],
     favorites: [],
     geoJsonMapLayers: [],
+    geoJsonMapToolbarPosition: DEFAULT_GEO_MAP_CONTROL_POSITION,
     workspaceConfigFileRelativePath: '',
     configFormExcludedPaths: []
   }

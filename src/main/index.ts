@@ -43,7 +43,14 @@ import {
   resolveUnderWorkspace,
   toWorkspaceRelative
 } from './workspacePaths'
+import { normalizeMapColorHex } from '../common/geoMapColors'
+import {
+  DEFAULT_GEO_MAP_CONTROL_POSITION,
+  normalizeGeoMapControlPosition
+} from '../common/geoMapControlPosition'
+import { DEFAULT_GEO_MAP_ICON, normalizeGeoMapIconId } from '../common/geoMapIcons'
 import { normalizeExcludedPathList } from '../common/configExcludedPaths'
+import { normalizeAppLocale } from '../common/appLocale'
 
 /**
  * Load `.env` from several locations so STORE_KEY works after `electron-builder`
@@ -156,6 +163,81 @@ const MAIN_I18N: Record<
       'Ce fichier ressemble à du JSON/texte (ex. GeoJSON), pas à une base LMDB. Menu contextuel : aperçu automatique ou texte UTF-8.',
     lmdbNotValidLmdbFile:
       'Ce fichier ne ressemble pas à un fichier LMDB valide (métadonnées LMDB absentes). Utilisez l’aperçu automatique ou le texte, ou un vrai chemin LMDB.'
+  },
+  de: {
+    ignoreFolder: 'Ordner ignorieren',
+    fileTooLarge: (maxBytes: number) => `Datei ist größer als ${maxBytes} Bytes`,
+    fileReadAsEncrypted: 'Verschlüsselt lesen (electron-store)',
+    fileDecryptNoKey: 'STORE_KEY ist nicht gesetzt — Entschlüsselung nicht möglich',
+    entryReadAsLmdb: 'Als LMDB-Datenbank lesen',
+    folderBrowseNormal: 'Als normalen Ordner durchsuchen',
+    fileReadWrongModeLmdb:
+      'Dieser Eintrag ist auf LMDB-Vorschau gesetzt — Auswahl im Explorer verwenden',
+    filePreviewAutomatic: 'Automatische Vorschau (Einstellungen → Erweiterungen)',
+    filePreviewAsText: 'Als UTF-8-Text anzeigen',
+    filePreviewAsImage: 'Als Bild anzeigen',
+    fileReadWrongModeImage:
+      'Diese Datei ist als Bild geöffnet — Auswahl im Explorer verwenden',
+    favoriteAddTo: 'Zu Favoriten hinzufügen',
+    favoriteRemoveFrom: 'Aus Favoriten entfernen',
+    geoMapAddToMap: 'Zur Karte hinzufügen',
+    geoMapRemoveFromMap: 'Von der Karte entfernen',
+    workspaceConfigSet: 'Als Workspace-Konfigurationsdatei festlegen',
+    workspaceConfigClear: 'Workspace-Konfiguration aufheben',
+    lmdbNotDatabaseJson:
+      'Diese Datei wirkt wie reines JSON/Text (z. B. GeoJSON), nicht wie eine LMDB-Datenbank. Kontextmenü: automatische Vorschau oder UTF-8-Text.',
+    lmdbNotValidLmdbFile:
+      'Diese Datei wirkt nicht wie eine gültige LMDB-Datei (keine LMDB-Metadaten). Automatische Vorschau oder Text verwenden, oder einen echten LMDB-Pfad wählen.'
+  },
+  pt: {
+    ignoreFolder: 'Ignorar pasta',
+    fileTooLarge: (maxBytes: number) => `O ficheiro é maior do que ${maxBytes} bytes`,
+    fileReadAsEncrypted: 'Ler como encriptado (electron-store)',
+    fileDecryptNoKey: 'STORE_KEY não está definida — não é possível desencriptar',
+    entryReadAsLmdb: 'Ler como base de dados LMDB',
+    folderBrowseNormal: 'Explorar como pasta normal',
+    fileReadWrongModeLmdb:
+      'Esta entrada está em pré-visualização LMDB — use a seleção no explorador',
+    filePreviewAutomatic: 'Pré-visualização automática (Definições → extensões)',
+    filePreviewAsText: 'Pré-visualizar como texto UTF-8',
+    filePreviewAsImage: 'Pré-visualizar como imagem',
+    fileReadWrongModeImage:
+      'Este ficheiro está aberto como imagem — use a seleção no explorador',
+    favoriteAddTo: 'Adicionar aos favoritos',
+    favoriteRemoveFrom: 'Remover dos favoritos',
+    geoMapAddToMap: 'Adicionar ao mapa',
+    geoMapRemoveFromMap: 'Remover do mapa',
+    workspaceConfigSet: 'Definir como ficheiro de configuração do workspace',
+    workspaceConfigClear: 'Limpar ficheiro de configuração do workspace',
+    lmdbNotDatabaseJson:
+      'Este ficheiro parece JSON/texto simples (ex. GeoJSON), não uma base LMDB. Menu de contexto: pré-visualização automática ou texto UTF-8.',
+    lmdbNotValidLmdbFile:
+      'Este ficheiro não parece um ficheiro LMDB válido (sem metadados LMDB). Use pré-visualização automática ou texto, ou um caminho LMDB real.'
+  },
+  es: {
+    ignoreFolder: 'Ignorar carpeta',
+    fileTooLarge: (maxBytes: number) => `El archivo supera los ${maxBytes} bytes`,
+    fileReadAsEncrypted: 'Leer como cifrado (electron-store)',
+    fileDecryptNoKey: 'STORE_KEY no está definida — no se puede descifrar',
+    entryReadAsLmdb: 'Leer como base de datos LMDB',
+    folderBrowseNormal: 'Explorar como carpeta normal',
+    fileReadWrongModeLmdb:
+      'Esta entrada está en vista previa LMDB — use la selección en el explorador',
+    filePreviewAutomatic: 'Vista previa automática (Ajustes → extensiones)',
+    filePreviewAsText: 'Vista previa como texto UTF-8',
+    filePreviewAsImage: 'Vista previa como imagen',
+    fileReadWrongModeImage:
+      'Este archivo está abierto como imagen — use la selección en el explorador',
+    favoriteAddTo: 'Añadir a favoritos',
+    favoriteRemoveFrom: 'Quitar de favoritos',
+    geoMapAddToMap: 'Añadir al mapa',
+    geoMapRemoveFromMap: 'Quitar del mapa',
+    workspaceConfigSet: 'Definir como archivo de configuración del workspace',
+    workspaceConfigClear: 'Quitar archivo de configuración del workspace',
+    lmdbNotDatabaseJson:
+      'Este archivo parece JSON/texto (p. ej. GeoJSON), no una base LMDB. Menú contextual: vista previa automática o texto UTF-8.',
+    lmdbNotValidLmdbFile:
+      'Este archivo no parece un archivo LMDB válido (sin metadatos LMDB). Use vista previa automática o texto, o una ruta LMDB real.'
   }
 }
 
@@ -190,8 +272,7 @@ function getStoreKeyFromEnv(): string | undefined {
 }
 
 function getAppLocale(): AppLocale {
-  const raw = appStore.get('locale', 'en')
-  return raw === 'fr' ? 'fr' : 'en'
+  return normalizeAppLocale(appStore.get('locale', 'en'))
 }
 
 function assertPathInsideRoot(root: string, relativePath: string): string {
@@ -791,6 +872,9 @@ app.whenReady().then(() => {
       })(),
       favorites: getFavoritesList().map((f) => ({ ...f })),
       geoJsonMapLayers: getGeoJsonLayers().map((l) => ({ ...l })),
+      geoJsonMapToolbarPosition: normalizeGeoMapControlPosition(
+        appStore.get('geoJsonMapToolbarPosition', DEFAULT_GEO_MAP_CONTROL_POSITION)
+      ),
       workspaceConfigFileRelativePath: getWorkspaceConfigFileRelativePath(),
       configFormExcludedPaths: [
         ...normalizeExcludedPathList(appStore.get('configFormExcludedPaths', []))
@@ -855,6 +939,61 @@ app.whenReady().then(() => {
     if (typeof id !== 'string' || !id.trim()) return
     const next = getGeoJsonLayers().filter((l) => l.id !== id.trim())
     appStore.set('geoJsonMapLayers', next)
+    notifyGeoJsonMapLayersChanged()
+  })
+
+  ipcMain.handle('geoJson:setLayerMapIcon', (_, payload: unknown) => {
+    if (!payload || typeof payload !== 'object') return
+    const p = payload as { id?: unknown; mapIcon?: unknown }
+    if (typeof p.id !== 'string' || !p.id.trim()) return
+    const layerId = p.id.trim()
+    const normalized = normalizeGeoMapIconId(p.mapIcon)
+    const list = getGeoJsonLayers()
+    const idx = list.findIndex((l) => l.id === layerId)
+    if (idx < 0) return
+    const prev = list[idx]!
+    if (prev.mapIcon === normalized) return
+    const next = [...list]
+    next[idx] = { ...prev, mapIcon: normalized }
+    appStore.set('geoJsonMapLayers', next)
+    notifyGeoJsonMapLayersChanged()
+  })
+
+  ipcMain.handle('geoJson:setLayerMapColor', (_, payload: unknown) => {
+    if (!payload || typeof payload !== 'object') return
+    const p = payload as { id?: unknown; mapColor?: unknown }
+    if (typeof p.id !== 'string' || !p.id.trim()) return
+    const layerId = p.id.trim()
+    const list = getGeoJsonLayers()
+    const idx = list.findIndex((l) => l.id === layerId)
+    if (idx < 0) return
+    const prev = list[idx]!
+    if (p.mapColor === null || p.mapColor === '') {
+      if (prev.mapColor === undefined) return
+      const next = [...list]
+      const { mapColor: _drop, ...rest } = prev
+      next[idx] = rest as GeoJsonMapLayerEntry
+      appStore.set('geoJsonMapLayers', next)
+      notifyGeoJsonMapLayersChanged()
+      return
+    }
+    if (typeof p.mapColor !== 'string') return
+    const normalized = normalizeMapColorHex(p.mapColor)
+    if (!normalized) return
+    if (prev.mapColor === normalized) return
+    const next = [...list]
+    next[idx] = { ...prev, mapColor: normalized }
+    appStore.set('geoJsonMapLayers', next)
+    notifyGeoJsonMapLayersChanged()
+  })
+
+  ipcMain.handle('geoJson:setMapToolbarPosition', (_, position: unknown) => {
+    const normalized = normalizeGeoMapControlPosition(position)
+    const prev = normalizeGeoMapControlPosition(
+      appStore.get('geoJsonMapToolbarPosition', DEFAULT_GEO_MAP_CONTROL_POSITION)
+    )
+    if (prev === normalized) return
+    appStore.set('geoJsonMapToolbarPosition', normalized)
     notifyGeoJsonMapLayersChanged()
   })
 
@@ -946,8 +1085,8 @@ app.whenReady().then(() => {
     notifyFavoritesChanged()
   })
 
-  ipcMain.handle('config:setLocale', (_, next: string) => {
-    const locale: AppLocale = next === 'fr' ? 'fr' : 'en'
+  ipcMain.handle('config:setLocale', (_, next: unknown) => {
+    const locale = normalizeAppLocale(typeof next === 'string' ? next : '')
     appStore.set('locale', locale)
     notifyLocaleChanged(locale)
   })
@@ -1190,7 +1329,8 @@ app.whenReady().then(() => {
                   list.push({
                     id: randomUUID(),
                     relativePath: normalizeStoredRel(rel),
-                    label: path.basename(absPath)
+                    label: path.basename(absPath),
+                    mapIcon: DEFAULT_GEO_MAP_ICON
                   })
                   createMapWindow()
                 }

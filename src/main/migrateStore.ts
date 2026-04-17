@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import path from 'path'
 import type Store from 'electron-store'
-import type { AppStoreSchema, FavoriteEntry, FileReadMode } from './appStore'
+import type { AppStoreSchema, FavoriteEntry, FileReadMode, GeoJsonMapLayerEntry } from './appStore'
+import { normalizeMapColorHex } from '../common/geoMapColors'
+import {
+  DEFAULT_GEO_MAP_CONTROL_POSITION,
+  normalizeGeoMapControlPosition
+} from '../common/geoMapControlPosition'
+import { normalizeGeoMapIconId } from '../common/geoMapIcons'
 import { normalizeStoredRel, toWorkspaceRelative } from './workspacePaths'
 
 /**
@@ -10,6 +16,8 @@ import { normalizeStoredRel, toWorkspaceRelative } from './workspacePaths'
 export function runStoreMigrations(appStore: Store<AppStoreSchema>): void {
   migrateFileDbBindings(appStore)
   migrateLmdbTimelineKeyRules(appStore)
+  migrateGeoJsonMapToolbarPosition(appStore)
+  migrateGeoJsonMapLayerIcons(appStore)
 }
 
 /** Copy legacy single `lmdbPath` + `lmdbTimelineKeyRegex` into the rules list. */
@@ -66,6 +74,71 @@ export function normalizeFavoritesArray(
     }
   }
   return out
+}
+
+/** Ensure each GeoJSON map layer has valid `mapIcon` and optional `mapColor`. */
+function migrateGeoJsonMapLayerIcons(appStore: Store<AppStoreSchema>): void {
+  const raw = appStore.get('geoJsonMapLayers', [])
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return
+  }
+  let changed = false
+  const next = (raw as GeoJsonMapLayerEntry[]).map((item) => {
+    const icon = normalizeGeoMapIconId(item?.mapIcon)
+    const color = normalizeMapColorHex(item?.mapColor)
+    if (item?.mapIcon !== icon) {
+      changed = true
+    }
+    if (color) {
+      if (item?.mapColor !== color) {
+        changed = true
+      }
+    } else if (item?.mapColor) {
+      changed = true
+    }
+    const out: GeoJsonMapLayerEntry = { ...item, mapIcon: icon }
+    if (color) {
+      out.mapColor = color
+    } else {
+      delete out.mapColor
+    }
+    return out
+  })
+  if (changed) {
+    appStore.set('geoJsonMapLayers', next)
+  }
+}
+
+/**
+ * Toolbar edge is global (one control strip). Migrate from legacy per-layer `mapControlPosition`
+ * and strip that field from stored layers.
+ */
+function migrateGeoJsonMapToolbarPosition(appStore: Store<AppStoreSchema>): void {
+  const raw = appStore.get('geoJsonMapLayers', [])
+  if (!appStore.has('geoJsonMapToolbarPosition')) {
+    let pos = DEFAULT_GEO_MAP_CONTROL_POSITION
+    if (Array.isArray(raw) && raw.length > 0) {
+      const first = raw[0] as GeoJsonMapLayerEntry & { mapControlPosition?: string }
+      pos = normalizeGeoMapControlPosition(first?.mapControlPosition)
+    }
+    appStore.set('geoJsonMapToolbarPosition', pos)
+  }
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return
+  }
+  let stripChanged = false
+  const stripped = (raw as (GeoJsonMapLayerEntry & { mapControlPosition?: string })[]).map(
+    (item) => {
+      if (item.mapControlPosition !== undefined) {
+        stripChanged = true
+      }
+      const { mapControlPosition: _drop, ...rest } = item
+      return rest as GeoJsonMapLayerEntry
+    }
+  )
+  if (stripChanged) {
+    appStore.set('geoJsonMapLayers', stripped)
+  }
 }
 
 function migrateFileDbBindings(appStore: Store<AppStoreSchema>): void {
