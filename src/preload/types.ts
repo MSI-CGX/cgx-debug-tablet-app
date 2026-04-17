@@ -30,6 +30,10 @@ export interface GeoJsonMapLayerEntry {
   id: string
   relativePath: string
   label: string
+  /** Lucide icon id for map point markers (whitelist in `common/geoMapIcons.ts`). */
+  mapIcon?: string
+  /** Hex color for points and polygons; line strings use deterministic random colors. */
+  mapColor?: string
 }
 
 export type FavoriteOpenResult =
@@ -52,7 +56,9 @@ export interface FolderEntry {
   readMode?: FileReadMode
 }
 
-export type AppLocale = 'en' | 'fr'
+import type { AppLocale } from '../common/appLocale'
+
+export type { AppLocale }
 
 /** LMDB file pattern → regex for parsing timestamps from keys (timeline). */
 export interface LmdbTimelineKeyRule {
@@ -85,6 +91,8 @@ export interface ConfigSnapshot {
   logHighlightRules: LogHighlightRule[]
   favorites: FavoriteEntry[]
   geoJsonMapLayers: GeoJsonMapLayerEntry[]
+  /** Map window: edge for the layer toolbar (all chips) — top / bottom / left / right. */
+  geoJsonMapToolbarPosition: 'top' | 'bottom' | 'left' | 'right'
   /** Single JSON config file path relative to workspace (empty if unset). */
   workspaceConfigFileRelativePath: string
   /**
@@ -203,6 +211,13 @@ export interface AppAPI {
     relativePath: string
   ) => Promise<{ ok: true; text: string } | { ok: false; error: string }>
   removeGeoJsonMapLayer: (id: string) => Promise<void>
+  /** Persist Lucide map icon id for a GeoJSON layer (must be in the whitelist). */
+  setGeoJsonMapLayerIcon: (id: string, mapIcon: string) => Promise<void>
+  /** Pass `null` or `''` to clear and use the automatic palette for points/polygons. */
+  setGeoJsonMapLayerColor: (id: string, mapColor: string | null) => Promise<void>
+  setGeoJsonMapToolbarPosition: (
+    position: 'top' | 'bottom' | 'left' | 'right'
+  ) => Promise<void>
   subscribeGeoJsonMapLayersChanged: (handler: () => void) => () => void
   setWorkspaceConfigFile: (relativePath: string | null) => Promise<void>
   subscribeWorkspaceConfigFileChanged: (handler: () => void) => () => void

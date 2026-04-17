@@ -130,6 +130,12 @@ const api: AppAPI = {
   readGeoJsonFileText: (relativePath: string) =>
     ipcRenderer.invoke('geoJson:readText', relativePath),
   removeGeoJsonMapLayer: (id: string) => ipcRenderer.invoke('geoJson:removeLayer', id),
+  setGeoJsonMapLayerIcon: (id: string, mapIcon: string) =>
+    ipcRenderer.invoke('geoJson:setLayerMapIcon', { id, mapIcon }),
+  setGeoJsonMapLayerColor: (id: string, mapColor: string | null) =>
+    ipcRenderer.invoke('geoJson:setLayerMapColor', { id, mapColor }),
+  setGeoJsonMapToolbarPosition: (position: 'top' | 'bottom' | 'left' | 'right') =>
+    ipcRenderer.invoke('geoJson:setMapToolbarPosition', position),
   subscribeGeoJsonMapLayersChanged: (handler: () => void): (() => void) => {
     const channel = 'config:geoJsonMapLayersChanged'
     const fn = (): void => {
