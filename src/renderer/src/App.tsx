@@ -36,6 +36,7 @@ import i18n from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import SettingsView from './SettingsView'
 import logoSplashUrl from '@resources/logo_splash.svg?url'
+import ReactJson from 'react-json-view'
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`
@@ -69,6 +70,19 @@ function isLogLikeFileName(fileName: string): boolean {
   if (lower.endsWith('.log')) return true
   // Rotated / split: app.log.1, app.log.old
   return /\.log\./.test(lower)
+}
+
+/** If the whole buffer looks like JSON object/array, return parsed value; otherwise null. */
+function tryParseJsonText(raw: string): unknown | null {
+  const t = raw.trim()
+  if (t.length === 0) return null
+  const first = t[0]
+  if (first !== '{' && first !== '[') return null
+  try {
+    return JSON.parse(t) as unknown
+  } catch {
+    return null
+  }
 }
 
 /** Parse common log timestamps from a line. */
@@ -624,6 +638,32 @@ export default function App(): JSX.Element {
     displayPreviewText === '' &&
     content.length > 0
 
+  const plainPreviewJson = useMemo((): unknown | null => {
+    if (!selectedEntry || selectedEntry.kind !== 'file') return null
+    if (readLoading || imagePreviewUrl) return null
+    if (showConfigFormPreview) return null
+    if (useLogHighlight) return null
+    if (selectedEntry.readMode === 'lmdb') return null
+    if (
+      configJsonPreview?.ok === false &&
+      workspaceConfigFilePath !== '' &&
+      normalizePathForCompare(selectedEntry.relativePath) ===
+        normalizePathForCompare(workspaceConfigFilePath)
+    ) {
+      return null
+    }
+    return tryParseJsonText(displayPreviewText)
+  }, [
+    selectedEntry,
+    readLoading,
+    imagePreviewUrl,
+    showConfigFormPreview,
+    useLogHighlight,
+    configJsonPreview,
+    workspaceConfigFilePath,
+    displayPreviewText
+  ])
+
   const openNativeDateTimePicker = (el: HTMLInputElement | null): void => {
     if (!el) return
     try {
@@ -1025,6 +1065,18 @@ export default function App(): JSX.Element {
                 !(configJsonPreview?.ok === false && isWorkspaceConfigFile(selectedEntry)) ? (
                   showLogPreviewEmpty ? (
                     <p className="muted log-preview-empty">{t('app.logLevelAllHidden')}</p>
+                  ) : plainPreviewJson !== null ? (
+                    <div className="preview-json-view-wrap">
+                      <ReactJson
+                        src={plainPreviewJson as object}
+                        name={false}
+                        theme="monokai"
+                        collapsed={2}
+                        enableClipboard
+                        displayDataTypes={false}
+                        displayObjectSize={false}
+                      />
+                    </div>
                   ) : (
                     <pre className="content">{displayPreviewText}</pre>
                   )

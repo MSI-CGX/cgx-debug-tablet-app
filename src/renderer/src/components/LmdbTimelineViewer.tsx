@@ -10,7 +10,7 @@ import {
   startOfMonth,
   subMonths
 } from 'date-fns'
-import { enUS, fr } from 'date-fns/locale'
+import { de, enUS, es, fr, pt } from 'date-fns/locale'
 import { CalendarDays } from 'lucide-react'
 import {
   Brush,
@@ -338,7 +338,17 @@ export default function LmdbTimelineViewer({
     return Math.max(dayBounds.start, minMs) <= Math.min(dayBounds.end, maxMs)
   }, [dayBounds, minMs, maxMs])
 
-  const dateFnsLocale = i18n.language.startsWith('fr') ? fr : enUS
+  const dateFnsLocale = useMemo(() => {
+    const base = (i18n.language ?? 'en').split('-')[0] ?? 'en'
+    const map: Record<string, typeof enUS> = {
+      en: enUS,
+      fr,
+      de,
+      pt,
+      es
+    }
+    return map[base] ?? enUS
+  }, [i18n.language])
 
   const selectedDateForPicker = useMemo((): Date | undefined => {
     if (!selectedCalendarDay) return undefined

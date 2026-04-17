@@ -4,11 +4,12 @@ import App from './App'
 import './styles/globals.css'
 import './assets/main.css'
 import i18n from './i18n/config'
+import { normalizeAppLocale } from '../../common/appLocale'
 
 async function bootstrap(): Promise<void> {
   try {
     const snap = await window.api.getConfigSnapshot()
-    const lng = snap.locale === 'fr' ? 'fr' : 'en'
+    const lng = normalizeAppLocale(snap.locale)
     await i18n.changeLanguage(lng)
     document.documentElement.lang = lng
   } catch {
