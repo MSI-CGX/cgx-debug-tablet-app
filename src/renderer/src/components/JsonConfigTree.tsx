@@ -20,6 +20,10 @@ type Props = {
   excludedPathRules: readonly string[]
   /** Persist this path via Settings (optional). */
   onAddExcludedPath?: (dottedPath: string) => void | Promise<void>
+  /**
+   * When true, nested `<details>` nodes start collapsed (accordion-style) instead of partially open by depth.
+   */
+  defaultCollapsed?: boolean
 }
 
 function serializePath(path: Path): string {
@@ -44,7 +48,8 @@ function canOpenContextMenuForPath(path: Path): boolean {
 export default function JsonConfigTree({
   data,
   excludedPathRules,
-  onAddExcludedPath
+  onAddExcludedPath,
+  defaultCollapsed = false
 }: Props): JSX.Element {
   const { t } = useTranslation()
   const [menu, setMenu] = useState<{
@@ -108,7 +113,8 @@ export default function JsonConfigTree({
         {renderNode(data, [], 0, {
           t,
           excludedPathRules,
-          openContextMenu
+          openContextMenu,
+          defaultCollapsed
         })}
       </div>
       {menu && dottedForMenu ? (
@@ -155,6 +161,7 @@ type RenderCtx = {
   t: (k: string, opts?: Record<string, unknown>) => string
   excludedPathRules: readonly string[]
   openContextMenu: (e: React.MouseEvent, path: Path) => void
+  defaultCollapsed: boolean
 }
 
 function renderNode(
@@ -163,7 +170,7 @@ function renderNode(
   depth: number,
   ctx: RenderCtx
 ): ReactNode {
-  const { t, excludedPathRules, openContextMenu } = ctx
+  const { t, excludedPathRules, openContextMenu, defaultCollapsed } = ctx
   if (isPathExcludedByRules(path, excludedPathRules)) {
     return null
   }
@@ -236,7 +243,7 @@ function renderNode(
     if (visibleIndices.length === 0) {
       return (
         <details
-          open={depth < 4}
+          open={defaultCollapsed ? false : depth < 4}
           className="json-config-details"
           style={{ paddingLeft: pad }}
           key={`${serializePath(path)}-arr-all-excl`}
@@ -256,7 +263,7 @@ function renderNode(
     }
     return (
       <details
-        open={depth < 4}
+        open={defaultCollapsed ? false : depth < 4}
         className="json-config-details"
         style={{ paddingLeft: pad }}
         key={`${serializePath(path)}-arrd`}
@@ -302,7 +309,7 @@ function renderNode(
   if (keys.length === 0) {
     return (
       <details
-        open={depth < 3}
+        open={defaultCollapsed ? false : depth < 3}
         className="json-config-details"
         style={{ paddingLeft: pad }}
         key={`${serializePath(path)}-obj-all-excl`}
@@ -322,7 +329,7 @@ function renderNode(
   }
   return (
     <details
-      open={depth < 3}
+      open={defaultCollapsed ? false : depth < 3}
       className="json-config-details"
       style={{ paddingLeft: pad }}
       key={`${serializePath(path)}-obj`}
