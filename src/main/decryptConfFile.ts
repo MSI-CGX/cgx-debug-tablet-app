@@ -1,10 +1,14 @@
 import crypto from 'crypto'
+import type { BinaryLike, CipherKey } from 'crypto'
 
 const ENCRYPTION_ALGORITHM = 'aes-256-cbc'
 
 /**
  * Decrypts a buffer written by conf/electron-store with `encryptionKey`
  * (IV + ':' + ciphertext format, or legacy createDecipher ciphertext).
+ *
+ * Note: `Buffer` ↔ `BinaryLike` / `CipherKey` assertions bridge @types/node strictness
+ * (ArrayBufferLike vs ArrayBuffer) — runtime behavior is unchanged.
  */
 export function decryptConfEncryptedBuffer(
   data: Buffer,
@@ -13,7 +17,7 @@ export function decryptConfEncryptedBuffer(
   if (data.length >= 17 && data.subarray(16, 17).toString() === ':') {
     const initializationVector = data.subarray(0, 16)
     const password = crypto.pbkdf2Sync(
-      encryptionKey,
+      encryptionKey as BinaryLike,
       initializationVector.toString(),
       10000,
       32,
@@ -21,8 +25,8 @@ export function decryptConfEncryptedBuffer(
     )
     const decipher = crypto.createDecipheriv(
       ENCRYPTION_ALGORITHM,
-      password,
-      initializationVector
+      password as unknown as CipherKey,
+      initializationVector as unknown as BinaryLike
     )
     return Buffer.concat([
       decipher.update(data.subarray(17)),
@@ -33,7 +37,7 @@ export function decryptConfEncryptedBuffer(
   try {
     const decipher = crypto.createDecipher(
       ENCRYPTION_ALGORITHM,
-      encryptionKey as crypto.BinaryLike
+      encryptionKey as unknown as BinaryLike
     )
     return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8')
   } catch (e) {
